@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HTML File Index</title>
+</head>
+<body>
+  <h1>HTML Files in Repository</h1>
+  <ul id="file-list"></ul>
+
+  <script>
+    const user = 'barinboim'; 
+    const repo = 'brnbm';
+    const branch = 'main'; 
+
+    fetch(`https://api.github.com/repos/${user}/${repo}/contents/`)
+      .then(response => response.json())
+      .then(files => {
+        const list = document.getElementById('file-list');
+        files
+          .filter(file => file.name.endsWith('.html'))
+          .forEach(file => {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.href = file.name;
+            a.textContent = file.name;
+            li.appendChild(a);
+            list.appendChild(li);
+          });
+      })
+      .catch(err => console.error('Error fetching files:', err));
+  </script>
+</body>
+</html>
