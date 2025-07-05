@@ -1,33 +1,90 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HTML File Index</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background-color: #f9f9f9;
+      color: #333;
+    }
+    h1 {
+      font-size: 1.5rem;
+      text-align: center;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 1rem;
+    }
+    li {
+      background: #fff;
+      margin: 0.5rem 0;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    a {
+      color: #0066cc;
+      text-decoration: none;
+      font-weight: bold;
+      word-wrap: break-word;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    @media (min-width: 600px) {
+      body {
+        max-width: 600px;
+        margin: auto;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>HTML Files in Repository</h1>
-  <ul id="file-list"></ul>
+  <h1>Available HTML Pages</h1>
+  <ul id="file-list">
+    <li>Loading files...</li>
+  </ul>
 
-  <script>
+    <script>
     const user = 'barinboim'; 
     const repo = 'brnbm';
-    const branch = 'main'; 
+    const branch = 'main';
 
-    fetch(`https://api.github.com/repos/${user}/${repo}/contents/`)
-      .then(response => response.json())
-      .then(files => {
+    async function loadFiles() {
+      try {
+        const res = await fetch(`https://api.github.com/repos/${user}/${repo}/contents/`);
+        const files = await res.json();
         const list = document.getElementById('file-list');
-        files
-          .filter(file => file.name.endsWith('.html'))
-          .forEach(file => {
-            const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = file.name;
-            a.textContent = file.name;
-            li.appendChild(a);
-            list.appendChild(li);
-          });
-      })
-      .catch(err => console.error('Error fetching files:', err));
+        list.innerHTML = ''; // Clear "Loading..."
+
+        const htmlFiles = files.filter(file => file.name.endsWith('.html'));
+
+        if (htmlFiles.length === 0) {
+          list.innerHTML = '<li>No HTML files found in the root directory.</li>';
+          return;
+        }
+
+        htmlFiles.forEach(file => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = file.name;
+          a.textContent = file.name;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+      } catch (error) {
+        document.getElementById('file-list').innerHTML = '<li>Error loading files.</li>';
+        console.error('GitHub API error:', error);
+      }
+    }
+
+    loadFiles();
   </script>
 </body>
 </html>
