@@ -102,6 +102,24 @@ button:disabled {
   color: #9aa4b2;
 }
 
+#addSignature {
+  border-color: #1f8a4c;
+  background: #1f8a4c;
+  color: #fff;
+  font-weight: 700;
+}
+
+#addSignature:hover:not(:disabled) {
+  background: #176a3a;
+  border-color: #176a3a;
+}
+
+#addSignature:disabled {
+  border-color: var(--line);
+  background: #f1f3f6;
+  color: #9aa4b2;
+}
+
 select {
   min-width: 170px;
   padding: 0 10px;

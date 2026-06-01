@@ -4,7 +4,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { webcrypto } from "node:crypto";
 
-const PBKDF2_ITERATIONS = 600_000;
+const PBKDF2_ITERATIONS = 300_000;
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
 
