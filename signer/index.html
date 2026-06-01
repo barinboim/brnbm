@@ -43,6 +43,16 @@
       </section>
     </main>
 
+    <div id="passwordOverlay" class="overlay">
+      <form id="passwordForm" class="password-card">
+        <h2>Password required</h2>
+        <p>Enter the password to unlock signatures.</p>
+        <input id="passwordInput" type="password" autocomplete="current-password" autofocus />
+        <div id="passwordError" class="password-error" hidden>Wrong password.</div>
+        <button type="submit">Unlock</button>
+      </form>
+    </div>
+
     <script type="module" src="app.js"></script>
   </body>
 </html>
