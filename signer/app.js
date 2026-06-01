@@ -136,10 +136,14 @@ async function fetchEncryptedBundle() {
   return encryptedBundle;
 }
 
-async function unlockSignatures(password) {
+async function unlockSignatures(password, onProgress = () => {}) {
+  onProgress("Fetching bundle...");
   const bundle = await fetchEncryptedBundle();
+
+  onProgress("Deriving key...");
   const key = await deriveBundleKey(password, bundle);
 
+  onProgress("Decrypting...");
   const decrypted = await Promise.all(
     bundle.items.map(async (item) => {
       const bytes = await decryptItem(key, item);
@@ -155,6 +159,7 @@ async function unlockSignatures(password) {
     }),
   );
 
+  onProgress("Loading images...");
   state.signatures = decrypted;
   await Promise.all(state.signatures.map(loadImageMeta));
   renderSignatureOptions();
@@ -476,7 +481,9 @@ els.passwordForm.addEventListener("submit", async (event) => {
   submit.disabled = true;
   submit.textContent = "Unlocking...";
   try {
-    await unlockSignatures(els.passwordInput.value);
+    await unlockSignatures(els.passwordInput.value, (stage) => {
+      submit.textContent = stage;
+    });
     hidePasswordOverlay();
     setStatus("Signatures unlocked. Open a PDF to start.");
   } catch (error) {
