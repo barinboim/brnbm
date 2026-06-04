@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Sorter 1.1</title>
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="grid-bg" aria-hidden="true"></div>
+
+  <!-- ШАПКА -->
+  <header id="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="wordmark">Sorter 1.1</span>
+      <span class="sub">нейминг · сортировка слов</span>
+    </div>
+    <div class="counters" id="counters">
+      <div class="chip ghost"><b id="cPlayed">0</b><span>сыграно</span></div>
+      <div class="chip ghost"><b id="cLeft">100</b><span>осталось</span></div>
+      <button class="iconbtn" id="btnFinish" title="Завершить раунд → к комментариям">✓</button>
+      <button class="iconbtn" id="btnRestart" title="Начать раунд заново">↻</button>
+      <button class="iconbtn" id="btnMenu" title="Меню">≡</button>
+    </div>
+    <div class="progress"><i id="progressBar"></i></div>
+  </header>
+
+  <!-- ИГРА -->
+  <main id="game" class="screen">
+    <div class="lane">
+      <aside class="basket bad" id="basketBad">
+        <div class="bcount" id="badCount">0</div>
+        <div class="bkey"><kbd>A</kbd><kbd>←</kbd></div>
+      </aside>
+
+      <div class="playfield" id="playfield">
+        <div class="skiphint"><kbd>↑</kbd><kbd>W</kbd> SKIP</div>
+        <div class="streak" id="streak"></div>
+        <!-- карточки инжектятся сюда -->
+      </div>
+
+      <aside class="basket good" id="basketGood">
+        <div class="bcount" id="goodCount">0</div>
+        <div class="bkey"><kbd>→</kbd><kbd>D</kbd></div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- ИТОГИ -->
+  <section id="results" class="screen hidden">
+    <div class="results-head">
+      <h2 id="resTitle">Итоги раунда</h2>
+      <div class="results-actions">
+        <button class="btn" id="btnExport">Экспорт .txt</button>
+        <button class="btn forge" id="btnForgeRound">Ковка ✦</button>
+        <button class="btn primary" id="btnNewRound">Новый раунд</button>
+      </div>
+    </div>
+    <div class="results-cols">
+      <div class="rescol good">
+        <header><span class="dot"></span>GOOD <b id="resGoodCount">0</b></header>
+        <div class="reslist" id="resGood"></div>
+      </div>
+      <div class="rescol bad">
+        <header><span class="dot"></span>BAD <b id="resBadCount">0</b></header>
+        <div class="reslist" id="resBad"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- СТАРТ / ЗАГРУЗКА -->
+  <div id="startOverlay" class="overlay">
+    <div class="panel start">
+      <div class="kicker">нейминг-игра</div>
+      <h1>Sorter 1.1</h1>
+      <p class="lede">Слова появляются по одному в центре. Раскидай их по корзинам — что годится
+         в нейм, а что нет. Раунд: <b id="ledeRound">100 слов</b>. Спешить некуда.</p>
+      <div class="legend">
+        <div><kbd>←</kbd><kbd>A</kbd><kbd>Space</kbd> в <span class="bad-t">BAD</span></div>
+        <div><kbd>→</kbd><kbd>D</kbd><kbd>Enter</kbd> в <span class="good-t">GOOD</span></div>
+        <div><kbd>↑</kbd><kbd>W</kbd> пропустить</div>
+      </div>
+      <div class="modeswitch">
+        <button class="modebtn on" id="modeDiscover" title="Словарные слова">Поиск</button>
+        <button class="modebtn" id="modeForge" title="Коины из твоих good-слов">Ковка ✦</button>
+      </div>
+      <button class="btn primary big" id="btnStart" disabled>Загрузка словарей…</button>
+      <div class="starthint">или нажми <kbd>Enter</kbd> / <kbd>Space</kbd></div>
+      <div class="starthint">на телефоне — свайп карточки: <b class="bad-t">←</b> плохо · <b class="good-t">→</b> хорошо · <b>↑</b> пропуск</div>
+      <div class="poolinfo" id="poolInfo"></div>
+    </div>
+  </div>
+
+  <!-- МЕНЮ -->
+  <div id="menuOverlay" class="overlay hidden">
+    <div class="panel menu">
+      <div class="panel-head">
+        <h2>Настройки</h2>
+        <button class="iconbtn" id="btnCloseMenu" title="Закрыть">✕</button>
+      </div>
+
+      <div class="field">
+        <label>Языки в пуле</label>
+        <div class="langs" id="langToggles"></div>
+      </div>
+
+      <div class="field">
+        <label>Длина слова <span class="val" id="lenVal"></span></label>
+        <div class="dual">
+          <span class="dl">мин</span><input type="range" id="lenMin" min="2" max="18" step="1">
+          <span class="dl">макс</span><input type="range" id="lenMax" min="2" max="18" step="1">
+        </div>
+        <p class="hint">Считаются буквы видимого слова (для grc/el/sa — транслитерации). Применится со следующего раунда.</p>
+      </div>
+
+      <div class="field">
+        <label>Слов в раунде <span class="val" id="roundVal"></span></label>
+        <input type="range" id="roundSize" min="10" max="300" step="10">
+        <div class="rng-ends"><span>10</span><span>300</span></div>
+      </div>
+
+      <div class="field">
+        <label>Адаптивный подбор <span class="val" id="adaptInfo"></span></label>
+        <div class="langs"><button class="lang" id="adaptToggle"><span class="tag">ВКУС</span> учить мой вкус</button></div>
+        <input type="range" id="focus" min="1" max="10" step="1" style="margin-top:12px">
+        <div class="rng-ends"><span>разведка</span><span>фокус</span></div>
+        <div class="hist-row" style="margin-top:10px">
+          <span id="tasteInfo" class="muted">—</span>
+          <button class="btn danger" id="btnResetTaste">Сбросить вкус</button>
+        </div>
+        <p class="hint">Слова смещаются к тому, что ты одобрял (модель на звуке/языке/длине, без ИИ). Плохая стопка тоже учит. Разведка = больше случайности, фокус = плотнее по вкусу.</p>
+      </div>
+
+      <div class="field">
+        <label>История</label>
+        <div class="hist-row">
+          <span id="playedInfo" class="muted">—</span>
+          <button class="btn danger" id="btnResetHistory">Сбросить историю</button>
+        </div>
+        <p class="hint">Сброс вернёт уже сыгранные слова обратно в пул.</p>
+      </div>
+
+      <div class="field">
+        <button class="btn" id="btnCloseMenu2">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
