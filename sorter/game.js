@@ -112,7 +112,8 @@
   if (settings.animSpeed == null) settings.animSpeed = 1;
 
   // модель вкуса: наивный байес на признаках + вектор предпочтений по качествам Журавлёва
-  var taste = load(K_TASTE, null) || { good: {}, bad: {}, ng: 0, nb: 0 };
+  function freshTaste() { var p = []; for (var i = 0; i < PHONO.N; i++) p.push(0); return { good: {}, bad: {}, ng: 0, nb: 0, P: p }; }
+  var taste = load(K_TASTE, null) || freshTaste();
   if (!taste.P || taste.P.length !== PHONO.N) { taste.P = []; for (var _i = 0; _i < PHONO.N; _i++) taste.P.push(0); }
   var manualP = null;   // ручной набор качеств из настроек (перебивает выученный P)
   // корпус одобренных слов — ингредиенты для ковки (рычаг 2)
@@ -847,7 +848,8 @@
     fo.oninput = function () { settings.focus = +fo.value; save(K_SET, settings); };
     $("btnResetTaste").onclick = function () {
       if (!confirm("Сбросить выученный вкус (модель good/bad)? Языки и история не тронутся.")) return;
-      taste = { good: {}, bad: {}, ng: 0, nb: 0 }; save(K_TASTE, taste); tasteInfoUpdate();
+      taste = freshTaste(); save(K_TASTE, taste);
+      tasteInfoUpdate(); updateLeaders(); buildQpick(); refreshQinfo();
     };
     tasteInfoUpdate();
 
