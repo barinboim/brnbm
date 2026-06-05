@@ -260,6 +260,18 @@ kbd{
 .setcell .val{ color:var(--accent); text-transform:none; letter-spacing:0; }
 @media (max-width:560px){ .setrow{ grid-template-columns:1fr; gap:16px; } }
 
+/* компактный выбор словарей на старте (аббревиатуры) */
+.startlangs{ text-align:left; margin:0 0 16px; }
+.startlangs > label{ display:block; font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+.langmini{ display:flex; flex-wrap:wrap; gap:6px; }
+.lmini{
+  cursor:pointer; font-family:var(--mono); font-size:11.5px; letter-spacing:.04em; color:var(--muted);
+  background:rgba(255,255,255,.03); border:1px solid var(--panel-bd); border-radius:9px; padding:6px 10px; transition:.14s;
+}
+.lmini:hover{ border-color:rgba(113,252,233,.5); color:var(--ink); }
+.lmini.on{ color:var(--accent); border-color:var(--accent); background:var(--accent-d); }
+.lmini.empty{ opacity:.35; cursor:not-allowed; }
+
 /* поля меню */
 .field{ margin-bottom:20px; }
 .field > label{ display:block; font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
@@ -347,6 +359,18 @@ input[type=range]{ width:100%; accent-color:var(--accent); height:24px; }
 .btn.big{ font-size:16px; padding:15px 28px; width:100%; margin-top:6px; }
 .btn.forge{ color:var(--accent); border-color:rgba(113,252,233,.4); }
 .btn.forge:hover{ color:var(--accent); border-color:var(--accent); background:var(--accent-d); }
+/* особая кнопка ковки на итогах — выделяем ярко */
+@keyframes fusionGlow{
+  0%,100%{ box-shadow:0 8px 26px -10px rgba(155,140,255,.7); }
+  50%{ box-shadow:0 10px 34px -8px rgba(255,122,217,.9); }
+}
+.btn.fusion{
+  color:#160028; font-weight:800; letter-spacing:.02em; border-color:transparent;
+  background:linear-gradient(120deg,#71FCE9,#9b8cff 52%,#ff7ad9);
+  animation:fusionGlow 2.4s ease-in-out infinite;
+}
+.btn.fusion:hover{ color:#160028; filter:brightness(1.07) saturate(1.06); }
+@media (prefers-reduced-motion:reduce){ .btn.fusion{ animation:none; } }
 .btn.addict{ display:block; width:100%; margin-top:18px; background:transparent; border-style:dashed;
   border-color:var(--panel-bd); color:var(--muted); font-size:12.5px; }
 .btn.addict:hover{ border-style:dashed; border-color:var(--accent); color:var(--accent); }

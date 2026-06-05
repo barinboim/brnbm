@@ -21,6 +21,15 @@
     LABEL = {}; LANGS.forEach(function (L) { LABEL[L.code] = L.label; });
   }
   LANGS.forEach(function (L) { LABEL[L.code] = L.label; });
+  // бейдж языка: для своего словаря — его полное имя (вместо ✎), иначе короткий код
+  function langBadge(code) {
+    if (code && code.indexOf("custom:") === 0) {
+      var arr = customDicts();
+      for (var i = 0; i < arr.length; i++) if ("custom:" + arr[i].id === code) return arr[i].name;
+      return "✎";
+    }
+    return LABEL[code] || (code ? String(code).toUpperCase() : code);
+  }
   var TR_LANGS = { grc: 1, el: 1, sa: 1 };     // крупный токен = транслит
   var ROUND_SIZE = 100;
 
@@ -114,7 +123,7 @@
   var comments = load(K_COMMENTS, {}) || {};
 
   var round = null;
-  var startMode = "discover";   // режим, выбранный на старт-экране: discover | forge
+  var startMode = "discover";   // старт-экран всегда «поиск»; ковка запускается только с итогов (btnForgeRound)
   var resView = "round";        // экран итогов: round | all («за всё время»)
   var roundGen = 0;             // поколение раунда — чтобы стейл-колбэки не плодили карточки
   var ANIM = { fly: 300, appear: 190 };   // длительности анимаций (мс), задаются скоростью   // {cards:[], cursor, good:[], bad:[], target, active, locked}
@@ -590,7 +599,7 @@
     var post = esc(chars.slice(i + 1).join(""));
     el.innerHTML =
       '<span class="pos">' + esc(forged ? "коин" : (word.pos || "")) + "</span>" +
-      '<span class="lang-badge' + (forged ? " coin" : "") + '">' + (forged ? "✦" : (LABEL[word.lang] || word.lang.toUpperCase())) + "</span>" +
+      '<span class="lang-badge' + (forged ? " coin" : "") + '">' + (forged ? "✦" : langBadge(word.lang)) + "</span>" +
       origHtml +
       '<div class="reader">' +
         '<span class="tick top"></span>' +
@@ -737,7 +746,7 @@
       row.className = "resrow" + (withComments ? "" : " solo");
       var isTr = !!TR_LANGS[item.lang] && item.tr;
       var big = isTr ? item.tr : item.w;
-      var meta = (LABEL[item.lang] || item.lang) + " · " + item.g + (isTr ? " · " + item.w : "");
+      var meta = langBadge(item.lang) + " · " + item.g + (isTr ? " · " + item.w : "");
       var html = '<div class="word"><div class="rw">' + esc(big) + '</div>' +
                  '<div class="rmeta">' + esc(meta) + "</div></div>";
       if (withComments) html += '<input type="text" placeholder="комментарий…" value="' + esc(getComment(item)) + '">';
@@ -887,18 +896,10 @@
   function isGameVisible() { return !$("game").classList.contains("hidden") && $("startOverlay").classList.contains("hidden"); }
 
   // ── кнопки ─────────────────────────────────────────────────────────────
-  $("btnStart").addEventListener("click", function () { startRound(startMode === "forge"); });
-  $("btnForgeRound").addEventListener("click", function () { startRound(true); });
-  $("modeDiscover").addEventListener("click", function () { setMode("discover"); });
-  $("modeForge").addEventListener("click", function () { setMode("forge"); });
+  $("btnStart").addEventListener("click", function () { startRound(false); });          // старт-экран всегда «поиск»
+  $("btnForgeRound").addEventListener("click", function () { startRound(true); });        // ковка — только с итогов
   $("btnRestart").addEventListener("click", restartRound);
   $("btnFinish").addEventListener("click", finishRound);
-  function setMode(m) {
-    startMode = m;
-    $("modeDiscover").classList.toggle("on", m === "discover");
-    $("modeForge").classList.toggle("on", m === "forge");
-    refreshStart();
-  }
   $("btnNewRound").addEventListener("click", function () { hide($("results")); show($("startOverlay")); refreshStart(); });
   $("btnExport").addEventListener("click", exportTxt);
   $("viewRound").addEventListener("click", function () { setResView("round"); });
@@ -926,21 +927,31 @@
     buildMenu(); refreshStart();
   });
 
+  // компактный выбор словарей на старт-экране: аббревиатура (база) / имя (свой), без расшифровки
+  function renderStartLangs() {
+    var host = $("startLangs"); if (!host) return;
+    host.innerHTML = "";
+    LANGS.forEach(function (Lg) {
+      var n = (poolByLang[Lg.code] || []).length;
+      var el = document.createElement("button");
+      el.type = "button";
+      el.className = "lmini" + (settings.langs[Lg.code] ? " on" : "") + (n === 0 ? " empty" : "");
+      el.textContent = langBadge(Lg.code);
+      el.title = Lg.name + " · " + n + " слов";
+      if (n > 0) el.addEventListener("click", function () {
+        settings.langs[Lg.code] = !settings.langs[Lg.code];
+        save(K_SET, settings); refreshStart();
+      });
+      host.appendChild(el);
+    });
+  }
   function refreshStart() {
+    renderStartLangs();
     var avail = availableCount();
     var btn = $("btnStart");
-    var anyPool = false, parts = [];
-    LANGS.forEach(function (L) { var n = (poolByLang[L.code] || []).length; if (n) { anyPool = true; parts.push(L.label + " " + n); } });
-    if (startMode === "forge") {
-      btn.disabled = !anyPool;
-      btn.textContent = !anyPool ? "Словари не найдены" :
-        "Старт · ковка ✦" + (goodCorpus.length ? " · ингредиентов " + goodCorpus.length : " · из словаря");
-    } else {
-      btn.disabled = avail === 0;
-      btn.textContent = avail === 0 ? "Нет слов — включи языки/сбрось историю" : "Старт · раунд " + ((load(K_RND, 0) | 0) + 1);
-    }
-    $("poolInfo").innerHTML = "в пуле: " + (parts.join(" · ") || "—") +
-      "<br>доступно: " + avail + " · сыграно: " + played.size + " · твоих good-слов: " + goodCorpus.length;
+    btn.disabled = avail === 0;
+    btn.textContent = avail === 0 ? "Нет слов — включи словари/сбрось историю" : "Старт · раунд " + ((load(K_RND, 0) | 0) + 1);
+    $("poolInfo").innerHTML = "доступно: " + avail + " · сыграно: " + played.size + " · твоих good-слов: " + goodCorpus.length;
   }
 
   // настройки на старт-экране: кол-во слов + только МАКС длина (мин фиксирован = 2)
