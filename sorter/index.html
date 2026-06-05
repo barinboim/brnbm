@@ -109,8 +109,14 @@
         </div>
 
         <button class="btn primary big" id="btnStart" disabled>Старт</button>
-        <div class="starthint">или нажми <kbd>Enter</kbd> / <kbd>Space</kbd></div>
+        <div class="starthint">или нажми <kbd>Enter</kbd></div>
         <div class="starthint">на телефоне — свайп карточки: <b class="bad-t">←</b> плохо · <b class="good-t">→</b> хорошо · <b>↑</b> пропуск</div>
+
+        <div class="neim">
+          <input type="text" id="neimInput" placeholder="проверить нейм по фоносемантике…" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <div class="neimres" id="neimResult"></div>
+        </div>
+
         <div class="poolinfo" id="poolInfo"></div>
       </div>
     </div>
@@ -130,6 +136,23 @@
       </div>
 
       <div class="field">
+        <label>Свои словари <span class="val" id="customInfo"></span></label>
+        <div id="dictList" class="dictlist"></div>
+        <div class="cust-row">
+          <label class="btn filebtn">Добавить .txt<input type="file" id="customFile" accept=".txt,text/plain" multiple hidden></label>
+          <button class="btn" id="btnAddPaste">Вставить</button>
+          <button class="btn" id="btnOnlyCustom">Только свои</button>
+          <button class="btn" id="btnLlmPrompt">Промпт для LLM</button>
+        </div>
+        <div id="pasteBox" class="hidden">
+          <input type="text" id="pasteName" class="neim-in" placeholder="название словаря" autocomplete="off">
+          <textarea id="customText" placeholder="слова по одному на строку; с дефиницией: слово — значение"></textarea>
+          <button class="btn" id="btnSavePaste">Добавить словарь</button>
+        </div>
+        <p class="hint">Каждый словарь — отдельный «язык» ✎ в «Языки в пуле»: миксуй или включай по одному. «Только свои» оставит лишь их. С дефиницией: «слово — значение» (или TAB / «|»).</p>
+      </div>
+
+      <div class="field">
         <label>Адаптивный подбор <span class="val" id="adaptInfo"></span></label>
         <div class="langs"><button class="lang" id="adaptToggle"><span class="tag">ВКУС</span> учить мой вкус</button></div>
         <input type="range" id="focus" min="1" max="10" step="1" style="margin-top:12px">
@@ -142,6 +165,12 @@
         <div class="qhead">Лидеры / мой набор: <span id="leadersNow" class="qlead">учится…</span><button class="qclear" id="btnClearQ">сбросить</button></div>
         <div class="qpick" id="qpick"></div>
         <p class="hint">Подсвечены качества-лидеры. Кликни любые — задашь свой набор вручную (перебьёт выученное).</p>
+      </div>
+
+      <div class="field">
+        <label>Проверить нейм по фоносемантике</label>
+        <input type="text" id="neimInput2" class="neim-in" placeholder="введи имя…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="neimres" id="neimResult2"></div>
       </div>
 
       <div class="field">

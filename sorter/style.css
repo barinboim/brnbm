@@ -143,12 +143,13 @@ kbd{
 @keyframes streakpop{ 0%{ transform:scale(.72); } 55%{ transform:scale(1.16); } 100%{ transform:scale(1); } }
 
 /* угловой виджет качеств-лидеров (фоносемантика Журавлёва) */
-.leaders{ position:absolute; top:16px; left:16px; z-index:5; width:158px; opacity:0; transition:opacity .3s; pointer-events:none; }
+.leaders{ position:absolute; top:16px; left:16px; z-index:5; width:176px; opacity:0; transition:opacity .3s; pointer-events:none; }
 .leaders.show{ opacity:1; }
 .leaders .lhead{ font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
-.leaders .lrow{ display:flex; align-items:center; gap:8px; margin-bottom:6px; height:12px; }
-.leaders .lname{ font-family:var(--mono); font-size:10.5px; color:var(--ink); width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; }
-.leaders .lrow i{ display:block; height:4px; border-radius:2px; min-width:3px; background:linear-gradient(90deg,var(--accent),#37e9d2); box-shadow:0 0 8px var(--accent-g); transition:width .3s; }
+.leaders .lrow{ display:grid; grid-template-columns:78px 1fr 22px; align-items:center; gap:7px; margin-bottom:6px; height:12px; }
+.leaders .lname{ font-family:var(--mono); font-size:10.5px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.leaders .lrow i{ display:block; height:4px; border-radius:2px; min-width:3px; background:linear-gradient(90deg,var(--accent),#37e9d2); box-shadow:0 0 8px var(--accent-g); transition:width .35s; }
+.leaders .lrow b{ font-family:var(--mono); font-size:9px; font-weight:400; color:var(--muted); text-align:right; }
 
 /* ── карточка слова ──────────────────────────────────────────── */
 .card{
@@ -297,6 +298,40 @@ input[type=range]{ width:100%; accent-color:var(--accent); height:24px; }
 .qchip:hover{ color:var(--ink); border-color:rgba(113,252,233,.45); }
 .qchip.lead{ color:var(--accent); border-color:rgba(113,252,233,.4); box-shadow:0 0 10px -4px var(--accent-g); }
 .qchip.on{ color:#04211e; background:var(--accent); border-color:transparent; box-shadow:none; }
+
+/* проверка нейма по фоносемантике */
+.neim{ margin-top:18px; }
+.neim input, .neim-in{ width:100%; font-family:var(--mono); font-size:13px; color:var(--ink);
+  background:rgba(0,0,0,.28); border:1px solid var(--panel-bd); border-radius:11px; padding:11px 13px; }
+.neim input{ text-align:center; }
+.neim input::placeholder, .neim-in::placeholder{ color:var(--muted); }
+.neim input:focus, .neim-in:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-d); }
+.neimres{ display:none; margin-top:12px; }
+.neimres.show{ display:block; }
+.nrow{ display:grid; grid-template-columns:98px 1fr 32px; align-items:center; gap:8px; margin-bottom:5px; }
+.nname{ font-family:var(--mono); font-size:11px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nrow i{ display:block; height:5px; border-radius:3px; min-width:4px; background:linear-gradient(90deg,var(--accent),#37e9d2); box-shadow:0 0 8px var(--accent-g); transition:width .25s; }
+.nrow b{ font-family:var(--mono); font-size:10px; font-weight:400; color:var(--muted); text-align:right; }
+.nempty{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+/* свои словари */
+.cust-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.cust-row .btn{ font-size:12px; padding:9px 13px; }
+.filebtn{ cursor:pointer; }
+.dictlist{ display:flex; flex-direction:column; gap:6px; }
+.dictempty{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+.dictrow{ display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:10px; padding:8px 11px; border-radius:10px; background:rgba(255,255,255,.03); border:1px solid var(--panel-bd); }
+.dictrow.off{ opacity:.5; }
+.dictrow .dn{ font-family:var(--mono); font-size:12px; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dictrow .dc{ font-family:var(--mono); font-size:10px; color:var(--muted); }
+.dictrow .dx{ cursor:pointer; font-family:var(--mono); font-size:11px; color:var(--muted); background:none; border:1px solid var(--panel-bd); border-radius:6px; width:22px; height:22px; }
+.dictrow .dx:hover{ color:var(--bad); border-color:var(--bad-g); }
+#pasteBox{ margin-top:10px; }
+#pasteName{ margin-bottom:8px; }
+#customText{ width:100%; min-height:80px; resize:vertical; font-family:var(--mono); font-size:12px; line-height:1.5;
+  color:var(--ink); background:rgba(0,0,0,.28); border:1px solid var(--panel-bd); border-radius:11px; padding:11px 12px; }
+#customText:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-d); }
+#btnSavePaste{ margin-top:8px; width:100%; }
 
 /* кнопки */
 .btn{

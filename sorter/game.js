@@ -3,7 +3,7 @@
   "use strict";
 
   // ── языки ──────────────────────────────────────────────────────────────
-  var LANGS = [
+  var BASE_LANGS = [
     { code: "ru",  label: "RU",  name: "Русский" },
     { code: "en",  label: "EN",  name: "English" },
     { code: "fr",  label: "FR",  name: "Français" },
@@ -13,7 +13,14 @@
     { code: "el",  label: "EL",  name: "Новогреческий" },
     { code: "sa",  label: "SA",  name: "Санскрит" }
   ];
-  var LABEL = {}; LANGS.forEach(function (L) { LABEL[L.code] = L.label; });
+  // LANGS = базовые + свои словари (каждый — «язык» custom:<id>); пересобирается
+  var LANGS = BASE_LANGS.slice();
+  var LABEL = {};
+  function rebuildLangs() {
+    LANGS = BASE_LANGS.concat(customDicts().map(function (d) { return { code: "custom:" + d.id, label: "✎", name: d.name }; }));
+    LABEL = {}; LANGS.forEach(function (L) { LABEL[L.code] = L.label; });
+  }
+  LANGS.forEach(function (L) { LABEL[L.code] = L.label; });
   var TR_LANGS = { grc: 1, el: 1, sa: 1 };     // крупный токен = транслит
   var ROUND_SIZE = 100;
 
@@ -73,7 +80,8 @@
       K_RND    = "sorter.roundno.v1",
       K_LAST   = "sorter.lastround.v1",
       K_TASTE  = "sorter.taste.v1",
-      K_GOOD   = "sorter.goodcorpus.v1";
+      K_GOOD   = "sorter.goodcorpus.v1",
+      K_DICTS  = "sorter.customdicts.v1";
 
   function load(k, def) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch (e) { return def; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -85,7 +93,7 @@
   if (!settings.langs || typeof settings.langs !== "object") settings.langs = {};
   LANGS.forEach(function (L) { if (!(L.code in settings.langs)) settings.langs[L.code] = true; });
   if (settings.lenMin == null) settings.lenMin = 2;
-  if (settings.lenMax == null) settings.lenMax = 18;
+  if (settings.lenMax == null) settings.lenMax = 6;
   if (settings.roundSize == null) settings.roundSize = 100;
   if (settings.adaptive == null) settings.adaptive = true;
   if (settings.focus == null) settings.focus = 5;
@@ -125,8 +133,9 @@
   }
 
   function loadPools(onProgress) {
-    var done = 0, total = LANGS.length;
-    return Promise.all(LANGS.map(function (L) {
+    var real = LANGS.filter(function (L) { return L.code.indexOf("custom") !== 0; });
+    var done = 0, total = real.length;
+    return Promise.all(real.map(function (L) {
       return fetch("data/pool_" + L.code + ".jsonl", { cache: "no-store" })
         .then(function (r) { return r.ok ? r.text() : ""; })
         .then(function (t) { if (t) poolByLang[L.code] = parseJsonl(t); })
@@ -211,14 +220,17 @@
     var host = $("leaders"); if (!host) return;
     var manual = !!manualP, ready = manual || (taste.ng + taste.nb) >= 3;
     if (!ready) { host.className = "leaders"; host.innerHTML = ""; return; }
-    var L = phonLeaders(5), max = 0;
-    L.forEach(function (x) { max = Math.max(max, Math.abs(x.v)); });
-    if (!max) { host.className = "leaders"; host.innerHTML = ""; return; }
+    var L = phonLeaders(5);
+    var hi = Math.abs(L[0].v), lo = Math.abs(L[L.length - 1].v);
+    if (!hi) { host.className = "leaders"; host.innerHTML = ""; return; }
     host.className = "leaders show";
     host.innerHTML = '<div class="lhead">' + (manual ? "мой набор качеств" : "качества-лидеры") + "</div>" +
       L.map(function (x) {
-        var w = Math.max(4, Math.round(Math.abs(x.v) / max * 100));
-        return '<div class="lrow"><span class="lname">' + esc(x.label) + '</span><i style="width:' + w + '%"></i></div>';
+        var a = Math.abs(x.v);
+        // усиливаем разрыв: 5-й ≈ 22%, лидер 100% — видно конкуренцию
+        var w = hi <= lo ? 100 : Math.round(22 + (a - lo) / (hi - lo) * 78);
+        return '<div class="lrow"><span class="lname">' + esc(x.label) + '</span><i style="width:' + w +
+          '%"></i><b>' + (manual ? "•" : a.toFixed(1)) + "</b></div>";
       }).join("");
   }
 
@@ -269,6 +281,98 @@
       el.textContent = L.length ? L.map(function (x) { return x.label; }).join(" · ") : "учится…";
       el.className = "qlead";
     }
+  }
+
+  // ── проверка нейма по фоносемантике (вне геймплея) ─────────────────────
+  function renderNeim(name, host) {
+    if (!host) return;
+    name = (name || "").trim();
+    if (!name) { host.className = "neimres"; host.innerHTML = ""; return; }
+    if (!PHONO.toPhonemes(name).length) { host.className = "neimres show"; host.innerHTML = '<div class="nempty">нет узнаваемых букв</div>'; return; }
+    var v = PHONO.vec(name), arr = [];
+    for (var i = 0; i < v.length; i++) arr.push({ i: i, v: v[i] });
+    arr.sort(function (a, b) { return Math.abs(b.v) - Math.abs(a.v); });
+    var top = arr.slice(0, 8), hi = Math.abs(top[0].v) || 1;
+    host.className = "neimres show";
+    host.innerHTML = top.map(function (x) {
+      var w = Math.max(8, Math.round(Math.abs(x.v) / hi * 100));
+      return '<div class="nrow"><span class="nname">' + esc(PHONO.pole(x.i, x.v)) + '</span><i style="width:' + w +
+        '%"></i><b>' + (x.v >= 0 ? "+" : "") + x.v.toFixed(1) + "</b></div>";
+    }).join("");
+  }
+  function setupNeim(inputId, resultId) {
+    var inp = $(inputId), res = $(resultId);
+    if (!inp || !res) return;
+    inp.addEventListener("input", function () { renderNeim(inp.value, res); });
+  }
+
+  // ── свой словарь как «новый язык» ✎ ────────────────────────────────────
+  function parseCustom(text, lang) {
+    var out = [], lines = (text || "").split("\n");
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/\r$/, "").trim();
+      if (!line || line.charAt(0) === "#") continue;
+      var w = line, g = "", m = line.split(/\t| — | – | \| | :: | - /);
+      if (m.length >= 2 && m[0].trim()) { w = m[0].trim(); g = m.slice(1).join(" ").trim(); }
+      if (w) out.push({ w: w, g: g, tr: null, lang: lang || "custom", pos: "" });
+    }
+    return out;
+  }
+  function customDicts() { return load(K_DICTS, []) || []; }
+  function saveDicts(arr) { save(K_DICTS, arr); }
+  function loadCustomDicts() {
+    customDicts().forEach(function (d) {
+      poolByLang["custom:" + d.id] = parseCustom(d.text, "custom:" + d.id);
+      if (settings.langs["custom:" + d.id] == null) settings.langs["custom:" + d.id] = true;
+    });
+    rebuildLangs();
+  }
+  function addCustomDict(name, text) {
+    var dicts = customDicts();
+    var id = "d" + (dicts.reduce(function (m, d) { return Math.max(m, +d.id.slice(1) || 0); }, 0) + 1);
+    dicts.push({ id: id, name: (name || "Словарь").slice(0, 24), text: text || "" });
+    saveDicts(dicts);
+    poolByLang["custom:" + id] = parseCustom(text, "custom:" + id);
+    settings.langs["custom:" + id] = true; save(K_SET, settings);
+    rebuildLangs();
+  }
+  function removeCustomDict(id) {
+    saveDicts(customDicts().filter(function (d) { return d.id !== id; }));
+    delete poolByLang["custom:" + id];
+    delete settings.langs["custom:" + id]; save(K_SET, settings);
+    rebuildLangs();
+  }
+  function customInfoUpd() {
+    var dicts = customDicts(), tot = 0;
+    dicts.forEach(function (d) { tot += (poolByLang["custom:" + d.id] || []).length; });
+    var el = $("customInfo"); if (el) el.textContent = dicts.length ? (dicts.length + " слов. · " + tot + " слов") : "";
+  }
+  function renderDictList() {
+    var host = $("dictList"); if (!host) return;
+    var dicts = customDicts();
+    if (!dicts.length) { host.innerHTML = '<div class="dictempty">пока нет своих словарей</div>'; return; }
+    host.innerHTML = dicts.map(function (d) {
+      var n = (poolByLang["custom:" + d.id] || []).length;
+      var on = settings.langs["custom:" + d.id] !== false;
+      return '<div class="dictrow' + (on ? "" : " off") + '"><span class="dn">✎ ' + esc(d.name) + '</span><span class="dc">' + n + '</span><button class="dx" data-id="' + d.id + '">✕</button></div>';
+    }).join("");
+    Array.prototype.forEach.call(host.querySelectorAll(".dx"), function (b) {
+      b.onclick = function () { removeCustomDict(b.getAttribute("data-id")); buildMenu(); };
+    });
+  }
+  var LLM_PROMPT =
+    "Составь словарь слов для нейминговой игры Sorter.\n" +
+    "Формат строго:\n" +
+    "— одно слово на строке;\n" +
+    "— по желанию краткая дефиниция через « — »: слово — значение;\n" +
+    "— только кандидаты для бренда (сущ./прил./глаголы), без аббревиатур, имён собственных и вульгарного;\n" +
+    "— длина 2–14 букв, благозвучные; латиница или кириллица.\n" +
+    "Тема/территория: <ОПИШИ, напр. «тёплый кофейный бренд: ритуал, путешествие, тепло»>.\n" +
+    "Дай 150 слов, по одному на строке, без нумерации и без комментариев.";
+  function copyLlmPrompt() {
+    var done = function () { var b = $("btnLlmPrompt"); if (!b) return; var t = b.textContent; b.textContent = "скопировано ✓"; setTimeout(function () { b.textContent = t; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(LLM_PROMPT).then(done, function () { window.prompt("Скопируй промпт:", LLM_PROMPT); });
+    else window.prompt("Скопируй промпт:", LLM_PROMPT);
   }
   // следующее слово из remaining: адаптивно (Больцман по случайному окну) или равномерно
   function drawNext(pool) {
@@ -540,7 +644,7 @@
     if (!$("menuOverlay").classList.contains("hidden")) return;   // меню открыто
     // старт-экран: Enter / Space начинают раунд (вместо клика по кнопке)
     if (!$("startOverlay").classList.contains("hidden")) {
-      if ((e.key === "Enter" || e.code === "Space") && !$("btnStart").disabled) {
+      if (e.key === "Enter" && !$("btnStart").disabled) {
         e.preventDefault(); startRound(startMode === "forge");
       }
       return;
@@ -711,12 +815,35 @@
     };
     tasteInfoUpdate();
 
-    var an = $("animSpeed");
-    an.value = settings.animSpeed; animLabel();
-    an.oninput = function () { settings.animSpeed = +an.value; animLabel(); applyAnimSpeed(); save(K_SET, settings); };
-
     buildQpick(); refreshQinfo();
     $("btnClearQ").onclick = function () { settings.manualQ = []; save(K_SET, settings); buildQpick(); refreshQinfo(); updateLeaders(); };
+
+    renderDictList(); customInfoUpd();
+    $("customFile").onchange = function (e) {
+      var files = e.target.files; if (!files || !files.length) return;
+      var pending = files.length;
+      Array.prototype.forEach.call(files, function (f) {
+        var r = new FileReader();
+        r.onload = function () { addCustomDict(f.name.replace(/\.txt$/i, ""), r.result); if (--pending === 0) buildMenu(); };
+        r.readAsText(f);
+      });
+      e.target.value = "";
+    };
+    $("btnAddPaste").onclick = function () { $("pasteBox").classList.toggle("hidden"); };
+    $("btnSavePaste").onclick = function () {
+      var txt = $("customText").value.trim(); if (!txt) return;
+      addCustomDict($("pasteName").value.trim() || "Словарь", txt);
+      $("customText").value = ""; $("pasteName").value = ""; $("pasteBox").classList.add("hidden"); buildMenu();
+    };
+    $("btnOnlyCustom").onclick = function () {
+      if (!customDicts().length) { alert("Сначала добавь словарь."); return; }
+      LANGS.forEach(function (L) { settings.langs[L.code] = (L.code.indexOf("custom:") === 0); });
+      save(K_SET, settings); buildMenu();
+    };
+    $("btnLlmPrompt").onclick = copyLlmPrompt;
+
+    var an = $("animSpeed"); an.value = settings.animSpeed; animLabel();
+    an.oninput = function () { settings.animSpeed = +an.value; animLabel(); applyAnimSpeed(); save(K_SET, settings); };
 
     menuInfo();
   }
@@ -807,6 +934,9 @@
   setupStartControls();
   applyAnimSpeed();
   buildManualP();
+  loadCustomDicts();
+  setupNeim("neimInput", "neimResult");
+  setupNeim("neimInput2", "neimResult2");
   loadPools(function (done, total) {
     $("loadBar").style.width = (done / total * 100) + "%";
     $("loadCount").textContent = done + " / " + total;
