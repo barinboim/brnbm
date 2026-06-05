@@ -59,7 +59,7 @@
           <button class="modebtn" id="viewAll">за всё время</button>
         </div>
         <button class="btn" id="btnExport">Экспорт .txt</button>
-        <button class="btn fusion" id="btnForgeRound">✦ start fusion!</button>
+        <button class="btn fusion" id="btnForgeRound">✦ Fusion!</button>
         <button class="btn primary" id="btnNewRound">Новый раунд</button>
       </div>
     </div>
@@ -189,7 +189,12 @@
           <span id="playedInfo" class="muted">—</span>
           <button class="btn danger" id="btnResetHistory">Сбросить историю</button>
         </div>
-        <p class="hint">Сброс вернёт уже сыгранные слова обратно в пул.</p>
+        <p class="hint">Сброс вернёт уже сыгранные слова обратно в пул. «За всё время» и вкус не тронутся.</p>
+        <div class="hist-row" style="margin-top:12px">
+          <span id="alltimeInfo" class="muted">—</span>
+          <button class="btn danger" id="btnResetAllTime">Очистить «за всё время»</button>
+        </div>
+        <p class="hint">Удалит накопленный список good/bad «за всё время» вместе с комментариями. Сыгранные слова и вкус останутся.</p>
       </div>
 
       <div class="field">

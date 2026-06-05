@@ -742,9 +742,10 @@
 
   function renderResList(host, arr, withComments) {
     host.innerHTML = "";
+    var canDelete = resView === "all" && withComments;   // удаление отдельных good-слов — только в «за всё время»
     arr.forEach(function (item) {
       var row = document.createElement("div");
-      row.className = "resrow" + (withComments ? "" : " solo");
+      row.className = "resrow" + (withComments ? "" : " solo") + (canDelete ? " delable" : "");
       var isTr = !!TR_LANGS[item.lang] && item.tr;
       var big = isTr ? item.tr : item.w;
       var meta = langBadge(item.lang) + " · " + item.g + (isTr ? " · " + item.w : "");
@@ -753,12 +754,14 @@
       if (withComments) html += '<input type="text" placeholder="комментарий…" value="' + esc(getComment(item)) + '">';
       html += '<button class="movebtn" title="' + (withComments ? "Переместить в BAD" : "Переместить в GOOD") +
               '">' + (withComments ? "→ BAD" : "← GOOD") + "</button>";
+      if (canDelete) html += '<button class="delbtn" title="Удалить из «за всё время»">✕</button>';
       row.innerHTML = html;
       if (withComments) {
         var input = row.querySelector("input");
         input.addEventListener("input", function () { setComment(item, input.value); });
       }
       row.querySelector(".movebtn").addEventListener("click", function () { moveItem(item, !withComments); });
+      if (canDelete) row.querySelector(".delbtn").addEventListener("click", function () { deleteAllTime(item); });
       host.appendChild(row);
     });
     if (!arr.length) host.innerHTML = "";
@@ -771,6 +774,15 @@
     if (i < 0) return;
     from.splice(i, 1); to.push(item);
     pushAllTime(item, toGood);   // синхронизируем кумулятив
+    rerenderResults();
+  }
+  // удалить слово из «за всё время» совсем (вместе с комментарием)
+  function deleteAllTime(item) {
+    var k = key(item);
+    allGood = allGood.filter(function (x) { return key(x) !== k; });
+    allBad = allBad.filter(function (x) { return key(x) !== k; });
+    delete comments[k]; save(K_COMMENTS, comments);
+    save(K_ALLGOOD, allGood); save(K_ALLBAD, allBad);
     rerenderResults();
   }
   function rerenderResults() {
@@ -887,7 +899,10 @@
     $("tasteInfo").textContent = "выучено: " + taste.ng + " good · " + taste.nb + " bad" +
       (settings.adaptive && (taste.ng + taste.nb) < WARMUP ? " · нужно ≥" + WARMUP : "");
   }
-  function menuInfo() { $("playedInfo").textContent = played.size + " сыграно · " + availableCount() + " под фильтрами"; }
+  function menuInfo() {
+    $("playedInfo").textContent = played.size + " сыграно · " + availableCount() + " под фильтрами";
+    var at = $("alltimeInfo"); if (at) at.textContent = "за всё время: " + allGood.length + " good · " + allBad.length + " bad";
+  }
 
   // ── утилиты ────────────────────────────────────────────────────────────
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -927,6 +942,14 @@
     played = new Set(); save(K_PLAYED, []);
     save(K_RND, 0);   // следующий раунд снова первый
     buildMenu(); refreshStart();
+  });
+  $("btnResetAllTime").addEventListener("click", function () {
+    if (!allGood.length && !allBad.length) { alert("Список «за всё время» уже пуст."); return; }
+    if (!confirm("Очистить «за всё время» (" + allGood.length + " good · " + allBad.length + " bad) и комментарии к ним? Сыгранные слова и вкус не тронутся.")) return;
+    allGood = []; allBad = []; comments = {};
+    save(K_ALLGOOD, allGood); save(K_ALLBAD, allBad); save(K_COMMENTS, comments);
+    if (resView === "all") rerenderResults();   // если открыт экран итогов в режиме «за всё время»
+    buildMenu();
   });
 
   // компактный выбор словарей на старт-экране: аббревиатура (база) / имя (свой), без расшифровки
