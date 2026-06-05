@@ -89,14 +89,19 @@
   if (settings.roundSize == null) settings.roundSize = 100;
   if (settings.adaptive == null) settings.adaptive = true;
   if (settings.focus == null) settings.focus = 5;
+  if (settings.animSpeed == null) settings.animSpeed = 1;
 
-  // модель вкуса (наивный байес на признаках) — обучается на good/bad, рычаг 1
+  // модель вкуса: наивный байес на признаках + вектор предпочтений по качествам Журавлёва
   var taste = load(K_TASTE, null) || { good: {}, bad: {}, ng: 0, nb: 0 };
+  if (!taste.P || taste.P.length !== PHONO.N) { taste.P = []; for (var _i = 0; _i < PHONO.N; _i++) taste.P.push(0); }
+  var manualP = null;   // ручной набор качеств из настроек (перебивает выученный P)
   // корпус одобренных слов — ингредиенты для ковки (рычаг 2)
   var goodCorpus = load(K_GOOD, []);
 
   var round = null;
-  var startMode = "discover";   // режим, выбранный на старт-экране: discover | forge   // {cards:[], cursor, good:[], bad:[], target, active, locked}
+  var startMode = "discover";   // режим, выбранный на старт-экране: discover | forge
+  var roundGen = 0;             // поколение раунда — чтобы стейл-колбэки не плодили карточки
+  var ANIM = { fly: 300, appear: 190 };   // длительности анимаций (мс), задаются скоростью   // {cards:[], cursor, good:[], bad:[], target, active, locked}
 
   // ── DOM ────────────────────────────────────────────────────────────────
   var $ = function (id) { return document.getElementById(id); };
@@ -119,12 +124,14 @@
     return out;
   }
 
-  function loadPools() {
+  function loadPools(onProgress) {
+    var done = 0, total = LANGS.length;
     return Promise.all(LANGS.map(function (L) {
       return fetch("data/pool_" + L.code + ".jsonl", { cache: "no-store" })
         .then(function (r) { return r.ok ? r.text() : ""; })
         .then(function (t) { if (t) poolByLang[L.code] = parseJsonl(t); })
-        .catch(function () {});
+        .catch(function () {})
+        .then(function () { done++; if (onProgress) onProgress(done, total); });
     })).then(function () {
       var total = 0;
       LANGS.forEach(function (L) { total += (poolByLang[L.code] || []).length; });
@@ -180,12 +187,88 @@
     var f = featuresOf(word), t = good ? taste.good : taste.bad;
     for (var i = 0; i < f.length; i++) t[f[i]] = (t[f[i]] || 0) + 1;
     if (good) taste.ng++; else taste.nb++;
+    var qv = PHONO.vec(bigToken(word)), sgn = good ? 1 : -1;   // тянем P к качествам хороших слов
+    for (var j = 0; j < taste.P.length; j++) taste.P[j] += qv[j] * sgn;
     save(K_TASTE, taste);
   }
+  function activeP() { return manualP || taste.P; }
   function tasteScore(word) {
     var f = featuresOf(word), s = 0;
     for (var i = 0; i < f.length; i++) s += Math.log(((taste.good[f[i]] || 0) + 1) / ((taste.bad[f[i]] || 0) + 1));
+    var P = activeP(), qv = PHONO.vec(bigToken(word)), dot = 0, mag = 0;
+    for (var j = 0; j < P.length; j++) { dot += qv[j] * P[j]; mag += P[j] * P[j]; }
+    if (mag > 0) s += dot / Math.sqrt(mag) * 0.8;   // вклад фоносемантики (P нормирован)
     return s;
+  }
+  // топ-n качеств-лидеров по |P|
+  function phonLeaders(n) {
+    var P = activeP(), arr = [];
+    for (var i = 0; i < P.length; i++) arr.push({ i: i, v: P[i] });
+    arr.sort(function (a, b) { return Math.abs(b.v) - Math.abs(a.v); });
+    return arr.slice(0, n).map(function (x) { return { i: x.i, v: x.v, label: PHONO.pole(x.i, x.v) }; });
+  }
+  function updateLeaders() {
+    var host = $("leaders"); if (!host) return;
+    var manual = !!manualP, ready = manual || (taste.ng + taste.nb) >= 3;
+    if (!ready) { host.className = "leaders"; host.innerHTML = ""; return; }
+    var L = phonLeaders(5), max = 0;
+    L.forEach(function (x) { max = Math.max(max, Math.abs(x.v)); });
+    if (!max) { host.className = "leaders"; host.innerHTML = ""; return; }
+    host.className = "leaders show";
+    host.innerHTML = '<div class="lhead">' + (manual ? "мой набор качеств" : "качества-лидеры") + "</div>" +
+      L.map(function (x) {
+        var w = Math.max(4, Math.round(Math.abs(x.v) / max * 100));
+        return '<div class="lrow"><span class="lname">' + esc(x.label) + '</span><i style="width:' + w + '%"></i></div>';
+      }).join("");
+  }
+
+  // ── ручной набор качеств (перебивает выученный P) ──────────────────────
+  function manualHas(i, sign) { return (settings.manualQ || []).indexOf(i + ":" + sign) >= 0; }
+  function toggleManual(i, sign) {
+    settings.manualQ = settings.manualQ || [];
+    var key = i + ":" + sign, oi = settings.manualQ.indexOf(i + ":" + (-sign));
+    if (oi >= 0) settings.manualQ.splice(oi, 1);
+    var ki = settings.manualQ.indexOf(key);
+    if (ki >= 0) settings.manualQ.splice(ki, 1); else settings.manualQ.push(key);
+    save(K_SET, settings);
+  }
+  function buildManualP() {
+    var q = settings.manualQ || [];
+    if (!q.length) { manualP = null; return; }
+    var P = []; for (var i = 0; i < PHONO.N; i++) P.push(0);
+    q.forEach(function (k) { var p = k.split(":"); P[+p[0]] = +p[1] * 2; });
+    manualP = P;
+  }
+  function isLeader(i, sign) {
+    var arr = [];
+    for (var k = 0; k < taste.P.length; k++) arr.push({ i: k, v: taste.P[k] });
+    arr.sort(function (a, b) { return Math.abs(b.v) - Math.abs(a.v); });
+    var top = arr.slice(0, 5);
+    for (var t = 0; t < top.length; t++) if (top[t].i === i && (top[t].v >= 0 ? 1 : -1) === sign && Math.abs(top[t].v) > 0.05) return true;
+    return false;
+  }
+  function buildQpick() {
+    var qp = $("qpick"); if (!qp) return; qp.innerHTML = "";
+    PHONO.SCALES.forEach(function (sc, i) {
+      for (var side = 0; side < 2; side++) {
+        var sign = side === 0 ? 1 : -1;
+        var chip = document.createElement("button");
+        chip.className = "qchip" + (manualHas(i, sign) ? " on" : "") + (isLeader(i, sign) ? " lead" : "");
+        chip.textContent = sc[side];
+        (function (ii, ss) { chip.addEventListener("click", function () { toggleManual(ii, ss); buildQpick(); refreshQinfo(); updateLeaders(); }); })(i, sign);
+        qp.appendChild(chip);
+      }
+    });
+  }
+  function refreshQinfo() {
+    buildManualP();
+    var el = $("leadersNow"); if (!el) return;
+    if (manualP) { el.textContent = "ручной набор · " + settings.manualQ.length; el.className = "qlead manual"; }
+    else {
+      var L = phonLeaders(4).filter(function (x) { return Math.abs(x.v) > 0.05; });
+      el.textContent = L.length ? L.map(function (x) { return x.label; }).join(" · ") : "учится…";
+      el.className = "qlead";
+    }
   }
   // следующее слово из remaining: адаптивно (Больцман по случайному окну) или равномерно
   function drawNext(pool) {
@@ -279,11 +362,17 @@
       return;
     }
     round = { remaining: pool, good: [], bad: [], target: Math.min(settings.roundSize || ROUND_SIZE, pool.length),
-              active: null, locked: false, streakDir: null, streakN: 0, forge: !!forge };
+              active: null, locked: false, streakDir: null, streakN: 0, forge: !!forge, gen: ++roundGen };
     hide($("startOverlay")); hide($("results")); show($("game"));
+    clearPlayfield();   // убрать карточки прошлого раунда
     resetStreak();
     updateCounters();
+    updateLeaders();
     spawnNext();
+  }
+  function clearPlayfield() {
+    var cards = playfield.querySelectorAll(".card");
+    for (var i = 0; i < cards.length; i++) cards[i].remove();
   }
 
   function restartRound() {
@@ -409,18 +498,19 @@
   function resolve(action, fling) {
     if (!round || !round.active || round.locked) return;
     round.locked = true;
-    var a = round.active, el = a.el, word = a.word;
+    var a = round.active, el = a.el, word = a.word, gen = round.gen;
     el.classList.remove("parked", "drag-good", "drag-bad");
     // выход: класс fly-* (клавиши) или инлайн-флинг от текущей позиции (свайп)
     function exit(cls) {
-      if (fling) { el.style.transition = "transform .32s ease-out, opacity .32s"; el.style.transform = fling; el.style.opacity = "0"; }
+      if (fling) { el.style.transition = "transform " + ANIM.fly + "ms ease-out, opacity " + ANIM.fly + "ms"; el.style.transform = fling; el.style.opacity = "0"; }
       else el.classList.add(cls);
     }
+    function nextIfCurrent() { if (round && round.gen === gen) spawnNext(); }
 
     if (action === "skip") {
       flashHint(skiphint);
       exit("fly-skip");
-      after(el, function () { spawnNext(); });
+      after(el, nextIfCurrent);
       return;
     }
     var good = action === "good";
@@ -435,13 +525,14 @@
     played.add(key(word));
     save(K_PLAYED, Array.from(played));
     updateCounters();
-    after(el, function () { spawnNext(); });
+    updateLeaders();
+    after(el, nextIfCurrent);
   }
   function after(el, cb) {
     var done = false;
     function go() { if (done) return; done = true; if (el.parentNode) el.parentNode.removeChild(el); cb(); }
     el.addEventListener("transitionend", go);
-    setTimeout(go, 360); // страховка
+    setTimeout(go, ANIM.fly + 80); // страховка (зависит от скорости анимации)
   }
 
   document.addEventListener("keydown", function (e) {
@@ -454,7 +545,15 @@
       }
       return;
     }
-    if (!isGameVisible()) return;   // экран итогов и пр. — клавиши игры не ловим
+    // экран итогов: Enter запускает следующий раунд (если фокус не в поле комментария)
+    if (!$("results").classList.contains("hidden")) {
+      var ae = document.activeElement;
+      if (e.key === "Enter" && !(ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA"))) {
+        e.preventDefault(); startRound(round ? round.forge : startMode === "forge");
+      }
+      return;
+    }
+    if (!isGameVisible()) return;   // прочие экраны — клавиши игры не ловим
     // стрелки/Enter — по e.key; WASD/Space — по e.code (физ. клавиша, любая раскладка)
     // BAD: ← / A / Space · GOOD: → / D / Enter (вкл. numpad) · SKIP: ↑ / W
     var k = e.key, c = e.code;
@@ -502,6 +601,7 @@
     round.no = no;
     round.date = isoDate();
     show($("results")); hide($("game"));
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     rerenderResults();
   }
 
@@ -599,26 +699,6 @@
       host.appendChild(el);
     });
 
-    var lmin = $("lenMin"), lmax = $("lenMax");
-    lmin.value = settings.lenMin; lmax.value = settings.lenMax;
-    lenLabel();
-    lmin.oninput = function () {
-      settings.lenMin = Math.min(+lmin.value, +lmax.value); lmin.value = settings.lenMin;
-      lenLabel(); save(K_SET, settings); menuInfo();
-    };
-    lmax.oninput = function () {
-      settings.lenMax = Math.max(+lmax.value, +lmin.value); lmax.value = settings.lenMax;
-      lenLabel(); save(K_SET, settings); menuInfo();
-    };
-
-    var rs = $("roundSize");
-    rs.value = settings.roundSize;
-    roundLabel();
-    rs.oninput = function () {
-      settings.roundSize = +rs.value;
-      roundLabel(); save(K_SET, settings);
-    };
-
     var at = $("adaptToggle");
     at.classList.toggle("on", !!settings.adaptive);
     at.onclick = function () { settings.adaptive = !settings.adaptive; at.classList.toggle("on", settings.adaptive); save(K_SET, settings); tasteInfoUpdate(); };
@@ -631,9 +711,17 @@
     };
     tasteInfoUpdate();
 
+    var an = $("animSpeed");
+    an.value = settings.animSpeed; animLabel();
+    an.oninput = function () { settings.animSpeed = +an.value; animLabel(); applyAnimSpeed(); save(K_SET, settings); };
+
+    buildQpick(); refreshQinfo();
+    $("btnClearQ").onclick = function () { settings.manualQ = []; save(K_SET, settings); buildQpick(); refreshQinfo(); updateLeaders(); };
+
     menuInfo();
   }
-  function lenLabel() { $("lenVal").textContent = settings.lenMin + "–" + settings.lenMax + " букв"; }
+  function animLabel() { $("animVal").textContent = settings.animSpeed <= 1 ? "нормальная" : (settings.animSpeed >= 10 ? "супер-быстро" : "×" + settings.animSpeed); }
+  function lenLabel() { $("lenVal").textContent = "до " + settings.lenMax + " букв"; }
   function roundLabel() { $("roundVal").textContent = settings.roundSize + " слов"; }
   function tasteInfoUpdate() {
     $("adaptInfo").textContent = settings.adaptive ? "вкл" : "выкл";
@@ -683,7 +771,6 @@
   });
 
   function refreshStart() {
-    var lr = $("ledeRound"); if (lr) lr.textContent = settings.roundSize + " слов";
     var avail = availableCount();
     var btn = $("btnStart");
     var anyPool = false, parts = [];
@@ -700,15 +787,33 @@
       "<br>доступно: " + avail + " · сыграно: " + played.size + " · твоих good-слов: " + goodCorpus.length;
   }
 
+  // настройки на старт-экране: кол-во слов + только МАКС длина (мин фиксирован = 2)
+  function setupStartControls() {
+    var rs = $("roundSize"); rs.value = settings.roundSize; roundLabel();
+    rs.oninput = function () { settings.roundSize = +rs.value; roundLabel(); save(K_SET, settings); refreshStart(); };
+    settings.lenMin = 2;
+    var lmax = $("lenMax"); lmax.value = settings.lenMax; lenLabel();
+    lmax.oninput = function () { settings.lenMax = +lmax.value; lenLabel(); save(K_SET, settings); refreshStart(); };
+  }
+  function applyAnimSpeed() {
+    var s = Math.max(1, Math.min(10, settings.animSpeed || 1)), f = (s - 1) / 9;
+    ANIM.fly = Math.round(300 - f * 230);     // 300 → 70 мс
+    ANIM.appear = Math.round(190 - f * 145);  // 190 → 45 мс
+    document.documentElement.style.setProperty("--fly", ANIM.fly + "ms");
+    document.documentElement.style.setProperty("--appear", ANIM.appear + "ms");
+  }
+
   // ── старт ──────────────────────────────────────────────────────────────
-  $("poolInfo").textContent = "Загрузка словарей…";
-  loadPools().then(function () {
+  setupStartControls();
+  applyAnimSpeed();
+  buildManualP();
+  loadPools(function (done, total) {
+    $("loadBar").style.width = (done / total * 100) + "%";
+    $("loadCount").textContent = done + " / " + total;
+  }).then(function () {
+    hide($("loading"));
+    show($("startReady"));
     refreshStart();
-    var usingSample = (function () { // подсказка, если играем на сид-наборе
-      var real = 0; LANGS.forEach(function (L) { real += (poolByLang[L.code] || []).length; });
-      return real;
-    })();
-    if (!usingSample) { $("btnStart").disabled = true; $("btnStart").textContent = "Словари не найдены"; }
   });
 
 })();

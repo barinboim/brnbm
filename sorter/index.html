@@ -38,6 +38,7 @@
       <div class="playfield" id="playfield">
         <div class="skiphint"><kbd>↑</kbd><kbd>W</kbd> SKIP</div>
         <div class="streak" id="streak"></div>
+        <div class="leaders" id="leaders"></div>
         <!-- карточки инжектятся сюда -->
       </div>
 
@@ -75,21 +76,43 @@
     <div class="panel start">
       <div class="kicker">нейминг-игра</div>
       <h1>Sorter 1.1</h1>
-      <p class="lede">Слова появляются по одному в центре. Раскидай их по корзинам — что годится
-         в нейм, а что нет. Раунд: <b id="ledeRound">100 слов</b>. Спешить некуда.</p>
-      <div class="legend">
-        <div><kbd>←</kbd><kbd>A</kbd><kbd>Space</kbd> в <span class="bad-t">BAD</span></div>
-        <div><kbd>→</kbd><kbd>D</kbd><kbd>Enter</kbd> в <span class="good-t">GOOD</span></div>
-        <div><kbd>↑</kbd><kbd>W</kbd> пропустить</div>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div class="loadtext">Загрузка словарей… <b id="loadCount">0 / 8</b></div>
+        <div class="loadbar"><i id="loadBar"></i></div>
       </div>
-      <div class="modeswitch">
-        <button class="modebtn on" id="modeDiscover" title="Словарные слова">Поиск</button>
-        <button class="modebtn" id="modeForge" title="Коины из твоих good-слов">Ковка ✦</button>
+
+      <div id="startReady" class="hidden">
+        <p class="lede">Слова появляются по одному в центре. Раскидай их по корзинам — что годится в нейм, а что нет.</p>
+
+        <div class="setrow">
+          <div class="setcell">
+            <label>Слов в раунде <span class="val" id="roundVal"></span></label>
+            <input type="range" id="roundSize" min="10" max="300" step="10">
+          </div>
+          <div class="setcell">
+            <label>Длина слова <span class="val" id="lenVal"></span></label>
+            <input type="range" id="lenMax" min="2" max="18" step="1">
+          </div>
+        </div>
+
+        <div class="legend">
+          <div><kbd>←</kbd><kbd>A</kbd><kbd>Space</kbd> в <span class="bad-t">BAD</span></div>
+          <div><kbd>→</kbd><kbd>D</kbd><kbd>Enter</kbd> в <span class="good-t">GOOD</span></div>
+          <div><kbd>↑</kbd><kbd>W</kbd> пропустить</div>
+        </div>
+
+        <div class="modeswitch">
+          <button class="modebtn on" id="modeDiscover" title="Словарные слова">Поиск</button>
+          <button class="modebtn" id="modeForge" title="Коины из твоих good-слов">Ковка ✦</button>
+        </div>
+
+        <button class="btn primary big" id="btnStart" disabled>Старт</button>
+        <div class="starthint">или нажми <kbd>Enter</kbd> / <kbd>Space</kbd></div>
+        <div class="starthint">на телефоне — свайп карточки: <b class="bad-t">←</b> плохо · <b class="good-t">→</b> хорошо · <b>↑</b> пропуск</div>
+        <div class="poolinfo" id="poolInfo"></div>
       </div>
-      <button class="btn primary big" id="btnStart" disabled>Загрузка словарей…</button>
-      <div class="starthint">или нажми <kbd>Enter</kbd> / <kbd>Space</kbd></div>
-      <div class="starthint">на телефоне — свайп карточки: <b class="bad-t">←</b> плохо · <b class="good-t">→</b> хорошо · <b>↑</b> пропуск</div>
-      <div class="poolinfo" id="poolInfo"></div>
     </div>
   </div>
 
@@ -107,21 +130,6 @@
       </div>
 
       <div class="field">
-        <label>Длина слова <span class="val" id="lenVal"></span></label>
-        <div class="dual">
-          <span class="dl">мин</span><input type="range" id="lenMin" min="2" max="18" step="1">
-          <span class="dl">макс</span><input type="range" id="lenMax" min="2" max="18" step="1">
-        </div>
-        <p class="hint">Считаются буквы видимого слова (для grc/el/sa — транслитерации). Применится со следующего раунда.</p>
-      </div>
-
-      <div class="field">
-        <label>Слов в раунде <span class="val" id="roundVal"></span></label>
-        <input type="range" id="roundSize" min="10" max="300" step="10">
-        <div class="rng-ends"><span>10</span><span>300</span></div>
-      </div>
-
-      <div class="field">
         <label>Адаптивный подбор <span class="val" id="adaptInfo"></span></label>
         <div class="langs"><button class="lang" id="adaptToggle"><span class="tag">ВКУС</span> учить мой вкус</button></div>
         <input type="range" id="focus" min="1" max="10" step="1" style="margin-top:12px">
@@ -130,7 +138,16 @@
           <span id="tasteInfo" class="muted">—</span>
           <button class="btn danger" id="btnResetTaste">Сбросить вкус</button>
         </div>
-        <p class="hint">Слова смещаются к тому, что ты одобрял (модель на звуке/языке/длине, без ИИ). Плохая стопка тоже учит. Разведка = больше случайности, фокус = плотнее по вкусу.</p>
+        <p class="hint">Учится на good/bad по фоносемантике Журавлёва — какие качества (светлый, нежный, сильный…) ты предпочитаешь. Разведка = больше случайности, фокус = плотнее по вкусу.</p>
+        <div class="qhead">Лидеры / мой набор: <span id="leadersNow" class="qlead">учится…</span><button class="qclear" id="btnClearQ">сбросить</button></div>
+        <div class="qpick" id="qpick"></div>
+        <p class="hint">Подсвечены качества-лидеры. Кликни любые — задашь свой набор вручную (перебьёт выученное).</p>
+      </div>
+
+      <div class="field">
+        <label>Скорость анимации <span class="val" id="animVal"></span></label>
+        <input type="range" id="animSpeed" min="1" max="10" step="1">
+        <div class="rng-ends"><span>нормальная</span><span>супер-быстро</span></div>
       </div>
 
       <div class="field">
@@ -148,6 +165,7 @@
     </div>
   </div>
 
+  <script src="phono.js"></script>
   <script src="game.js"></script>
 </body>
 </html>

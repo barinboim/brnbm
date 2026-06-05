@@ -17,6 +17,8 @@
   --mono:    'Spline Sans Mono', ui-monospace, monospace;
   --sans:    system-ui, -apple-system, 'Avenir Next', sans-serif;
   --script:  'Kohinoor Devanagari', 'Devanagari Sangam MN', 'Noto Sans Devanagari', system-ui, serif;
+  --appear: .19s;   /* появление карточки — задаётся «скоростью анимации» */
+  --fly: .3s;       /* вылет карточки в корзину */
 }
 
 *{ box-sizing:border-box; margin:0; padding:0; }
@@ -140,11 +142,19 @@ kbd{
 .streak.pop{ animation:streakpop .32s ease; }
 @keyframes streakpop{ 0%{ transform:scale(.72); } 55%{ transform:scale(1.16); } 100%{ transform:scale(1); } }
 
+/* угловой виджет качеств-лидеров (фоносемантика Журавлёва) */
+.leaders{ position:absolute; top:16px; left:16px; z-index:5; width:158px; opacity:0; transition:opacity .3s; pointer-events:none; }
+.leaders.show{ opacity:1; }
+.leaders .lhead{ font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.leaders .lrow{ display:flex; align-items:center; gap:8px; margin-bottom:6px; height:12px; }
+.leaders .lname{ font-family:var(--mono); font-size:10.5px; color:var(--ink); width:84px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; }
+.leaders .lrow i{ display:block; height:4px; border-radius:2px; min-width:3px; background:linear-gradient(90deg,var(--accent),#37e9d2); box-shadow:0 0 8px var(--accent-g); transition:width .3s; }
+
 /* ── карточка слова ──────────────────────────────────────────── */
 .card{
   position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) scale(.97);
   width:min(540px,94%); padding:24px 28px 22px; border-radius:22px; touch-action:none;
-  text-align:center; opacity:0; transition:opacity .19s ease, transform .19s ease;
+  text-align:center; opacity:0; transition:opacity var(--appear) ease, transform var(--appear) ease;
   will-change:transform,opacity; overflow:hidden; cursor:grab;
   background:linear-gradient(180deg, #11171c, #0a0e12);
   border:1px solid var(--panel-bd);
@@ -178,9 +188,9 @@ kbd{
 .card .w .orp{ color:var(--accent); text-shadow:0 0 22px var(--accent-g); }
 .card .g{ margin-top:16px; font-size:15px; line-height:1.4; color:#b9c6cc; max-width:90%; margin-inline:auto; }
 
-.card.fly-good{ transition:transform .3s cubic-bezier(.2,.75,.25,1), opacity .3s; transform:translate(62vw,-22px) rotate(15deg); opacity:0; }
-.card.fly-bad{  transition:transform .3s cubic-bezier(.2,.75,.25,1), opacity .3s; transform:translate(-62vw,-22px) rotate(-15deg); opacity:0; }
-.card.fly-skip{ transition:transform .26s ease-in, opacity .26s; transform:translate(-50%,-62vh) scale(.6); opacity:0; }
+.card.fly-good{ transition:transform var(--fly) cubic-bezier(.2,.75,.25,1), opacity var(--fly); transform:translate(62vw,-22px) rotate(15deg); opacity:0; }
+.card.fly-bad{  transition:transform var(--fly) cubic-bezier(.2,.75,.25,1), opacity var(--fly); transform:translate(-62vw,-22px) rotate(-15deg); opacity:0; }
+.card.fly-skip{ transition:transform var(--fly) ease-in, opacity var(--fly); transform:translate(-50%,-62vh) scale(.6); opacity:0; }
 
 /* ── итоги ───────────────────────────────────────────────────── */
 #results{ height:calc(100vh - 70px); display:flex; flex-direction:column; padding:18px clamp(14px,3vw,30px) 0; }
@@ -232,6 +242,23 @@ kbd{
 .starthint{ margin-top:11px; font-family:var(--mono); font-size:11.5px; color:var(--muted); }
 .starthint kbd{ font-size:.92em; }
 
+/* анимация загрузки словарей */
+.loading{ display:flex; flex-direction:column; align-items:center; gap:16px; padding:30px 0 20px; }
+.spinner{ width:42px; height:42px; border-radius:50%; border:3px solid rgba(255,255,255,.1); border-top-color:var(--accent);
+  animation:spin .8s linear infinite; box-shadow:0 0 26px -8px var(--accent-g); }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.loadtext{ font-family:var(--mono); font-size:13px; color:var(--muted); }
+.loadtext b{ color:var(--accent); }
+.loadbar{ width:min(280px,72%); height:4px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; }
+.loadbar i{ display:block; height:100%; width:0; border-radius:3px; background:linear-gradient(90deg,var(--accent),#37e9d2);
+  box-shadow:0 0 10px var(--accent-g); transition:width .25s; }
+
+/* настройки кол-ва/длины слов на старт-экране */
+.setrow{ display:grid; grid-template-columns:1fr 1fr; gap:14px 22px; margin:4px 0 16px; text-align:left; }
+.setcell > label{ display:block; font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+.setcell .val{ color:var(--accent); text-transform:none; letter-spacing:0; }
+@media (max-width:560px){ .setrow{ grid-template-columns:1fr; gap:16px; } }
+
 /* поля меню */
 .field{ margin-bottom:20px; }
 .field > label{ display:block; font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; }
@@ -258,6 +285,18 @@ input[type=range]{ width:100%; accent-color:var(--accent); height:24px; }
 .hist-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .muted{ color:var(--muted); font-family:var(--mono); font-size:12px; }
 .hint{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.4; }
+
+/* подбор качеств (фоносемантика): лидеры + ручной набор */
+.qhead{ display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:16px 0 9px; }
+.qhead .qlead{ flex:1; color:var(--accent); text-transform:none; letter-spacing:0; font-size:11.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.qhead .qlead.manual{ color:#ffcf5c; }
+.qclear{ cursor:pointer; flex:0 0 auto; font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; color:var(--muted); background:none; border:1px solid var(--panel-bd); border-radius:7px; padding:4px 8px; transition:.12s; }
+.qclear:hover{ color:var(--bad); border-color:var(--bad-g); }
+.qpick{ display:flex; flex-wrap:wrap; gap:5px; }
+.qchip{ cursor:pointer; font-family:var(--mono); font-size:10.5px; color:var(--muted); background:rgba(255,255,255,.03); border:1px solid var(--panel-bd); border-radius:8px; padding:5px 8px; transition:.12s; }
+.qchip:hover{ color:var(--ink); border-color:rgba(113,252,233,.45); }
+.qchip.lead{ color:var(--accent); border-color:rgba(113,252,233,.4); box-shadow:0 0 10px -4px var(--accent-g); }
+.qchip.on{ color:#04211e; background:var(--accent); border-color:transparent; box-shadow:none; }
 
 /* кнопки */
 .btn{
