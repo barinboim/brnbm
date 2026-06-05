@@ -81,7 +81,10 @@
       K_LAST   = "sorter.lastround.v1",
       K_TASTE  = "sorter.taste.v1",
       K_GOOD   = "sorter.goodcorpus.v1",
-      K_DICTS  = "sorter.customdicts.v1";
+      K_DICTS  = "sorter.customdicts.v1",
+      K_ALLGOOD = "sorter.allgood.v1",
+      K_ALLBAD  = "sorter.allbad.v1",
+      K_COMMENTS = "sorter.comments.v1";
 
   function load(k, def) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? def : v; } catch (e) { return def; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -105,9 +108,14 @@
   var manualP = null;   // ручной набор качеств из настроек (перебивает выученный P)
   // корпус одобренных слов — ингредиенты для ковки (рычаг 2)
   var goodCorpus = load(K_GOOD, []);
+  // кумулятивно «за всё время» + комментарии по словам (ключ lang|w)
+  var allGood = load(K_ALLGOOD, []) || [];
+  var allBad = load(K_ALLBAD, []) || [];
+  var comments = load(K_COMMENTS, {}) || {};
 
   var round = null;
   var startMode = "discover";   // режим, выбранный на старт-экране: discover | forge
+  var resView = "round";        // экран итогов: round | all («за всё время»)
   var roundGen = 0;             // поколение раунда — чтобы стейл-колбэки не плодили карточки
   var ANIM = { fly: 300, appear: 190 };   // длительности анимаций (мс), задаются скоростью   // {cards:[], cursor, good:[], bad:[], target, active, locked}
 
@@ -620,7 +628,9 @@
     var good = action === "good";
     flashBasket(good ? basketGood : basketBad);
     exit(good ? "fly-good" : "fly-bad");
-    (good ? round.good : round.bad).push({ w: word.w, g: word.g, tr: word.tr || null, lang: word.lang, pos: word.pos || "", comment: "" });
+    var item = { w: word.w, g: word.g, tr: word.tr || null, lang: word.lang, pos: word.pos || "" };
+    (good ? round.good : round.bad).push(item);
+    pushAllTime(item, good);   // кумулятив «за всё время»
     tasteUpdate(word, good);   // обучаем модель вкуса
     if (good && !round.forge) addGoodCorpus(word);   // словарные good → ингредиенты ковки
     var dir = good ? "good" : "bad";
@@ -706,7 +716,19 @@
     round.date = isoDate();
     show($("results")); hide($("game"));
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    rerenderResults();
+    setResView("round");
+  }
+
+  function getComment(it) { return comments[key(it)] || ""; }
+  function setComment(it, v) { comments[key(it)] = v; save(K_COMMENTS, comments); }
+  function curGood() { return resView === "all" ? allGood : (round ? round.good : []); }
+  function curBad() { return resView === "all" ? allBad : (round ? round.bad : []); }
+  function pushAllTime(item, good) {   // кумулятив: дедуп по ключу + копия в нужный список
+    var k = key(item);
+    allGood = allGood.filter(function (x) { return key(x) !== k; });
+    allBad = allBad.filter(function (x) { return key(x) !== k; });
+    (good ? allGood : allBad).push({ w: item.w, g: item.g, tr: item.tr || null, lang: item.lang, pos: item.pos || "" });
+    save(K_ALLGOOD, allGood); save(K_ALLBAD, allBad);
   }
 
   function renderResList(host, arr, withComments) {
@@ -719,39 +741,46 @@
       var meta = (LABEL[item.lang] || item.lang) + " · " + item.g + (isTr ? " · " + item.w : "");
       var html = '<div class="word"><div class="rw">' + esc(big) + '</div>' +
                  '<div class="rmeta">' + esc(meta) + "</div></div>";
-      if (withComments) html += '<input type="text" placeholder="комментарий…" value="' + esc(item.comment || "") + '">';
+      if (withComments) html += '<input type="text" placeholder="комментарий…" value="' + esc(getComment(item)) + '">';
       html += '<button class="movebtn" title="' + (withComments ? "Переместить в BAD" : "Переместить в GOOD") +
               '">' + (withComments ? "→ BAD" : "← GOOD") + "</button>";
       row.innerHTML = html;
       if (withComments) {
         var input = row.querySelector("input");
-        input.addEventListener("input", function () { item.comment = input.value; saveBackup(); });
+        input.addEventListener("input", function () { setComment(item, input.value); });
       }
       row.querySelector(".movebtn").addEventListener("click", function () { moveItem(item, !withComments); });
       host.appendChild(row);
     });
+    if (!arr.length) host.innerHTML = "";
   }
 
-  // перенос слова между колонками на экране итогов (исправить ошибку сортировки)
+  // перенос слова между колонками (исправить ошибку сортировки) — учитывает режим просмотра
   function moveItem(item, toGood) {
-    if (!round) return;
-    var from = toGood ? round.bad : round.good;
-    var to = toGood ? round.good : round.bad;
+    var from = toGood ? curBad() : curGood(), to = toGood ? curGood() : curBad();
     var i = from.indexOf(item);
     if (i < 0) return;
-    from.splice(i, 1);
-    to.push(item);
+    from.splice(i, 1); to.push(item);
+    pushAllTime(item, toGood);   // синхронизируем кумулятив
     rerenderResults();
   }
   function rerenderResults() {
-    if (!round) return;
-    $("resTitle").textContent = "Раунд " + round.no + " · сыграно " + (round.good.length + round.bad.length) +
-      " · good " + round.good.length + " · bad " + round.bad.length;
-    $("resGoodCount").textContent = round.good.length;
-    $("resBadCount").textContent = round.bad.length;
-    renderResList($("resGood"), round.good, true);
-    renderResList($("resBad"), round.bad, false);
+    var g = curGood(), b = curBad();
+    $("resTitle").textContent = resView === "all"
+      ? "За всё время · good " + g.length + " · bad " + b.length
+      : "Раунд " + (round ? round.no : "") + " · сыграно " + (g.length + b.length) + " · good " + g.length + " · bad " + b.length;
+    $("resGoodCount").textContent = g.length;
+    $("resBadCount").textContent = b.length;
+    renderResList($("resGood"), g, true);
+    renderResList($("resBad"), b, false);
     saveBackup();
+  }
+  function setResView(v) {
+    resView = v;
+    var vr = $("viewRound"), va = $("viewAll");
+    if (vr) vr.classList.toggle("on", v === "round");
+    if (va) va.classList.toggle("on", v === "all");
+    rerenderResults();
   }
 
   function saveBackup() {
@@ -761,26 +790,25 @@
 
   // ── экспорт .txt ───────────────────────────────────────────────────────
   function exportTxt() {
-    if (!round) return;
-    var g = round.good, b = round.bad;
+    var g = curGood(), b = curBad(), all = resView === "all";
+    if (!g.length && !b.length) { alert("Пока нечего экспортировать."); return; }
     var L = [];
-    L.push("# раунд " + round.no + " · " + round.date + " · сыграно " + (g.length + b.length) +
+    L.push("# " + (all ? "за всё время · " + isoDate() : "раунд " + round.no + " · " + round.date) +
            " · good " + g.length + " · bad " + b.length);
     L.push("# колонки: слово \\t язык \\t глосс \\t комментарий");
     L.push("## GOOD");
-    g.forEach(function (it) { L.push(rowTxt(it)); });
-    // плохие слова в экспорт не идут — только хорошие
+    g.forEach(function (it) { L.push(rowTxt(it)); });   // плохие в экспорт не идут — только хорошие
     var blob = new Blob([L.join("\n") + "\n"], { type: "text/plain;charset=utf-8" });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "round_" + pad2(round.no) + "_" + round.date + ".txt";
+    a.download = all ? "sorter_allgood_" + isoDate() + ".txt" : "round_" + pad2(round.no) + "_" + round.date + ".txt";
     document.body.appendChild(a); a.click();
     setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }
   function rowTxt(it) {
     var word = it.w + (it.tr && TR_LANGS[it.lang] ? " (" + it.tr + ")" : "");
-    var c = (it.comment || "").trim() || "—";
+    var c = (getComment(it) || "").trim() || "—";
     return [word, it.lang, it.g, c].join("\t");
   }
 
@@ -880,6 +908,8 @@
   }
   $("btnNewRound").addEventListener("click", function () { hide($("results")); show($("startOverlay")); refreshStart(); });
   $("btnExport").addEventListener("click", exportTxt);
+  $("viewRound").addEventListener("click", function () { setResView("round"); });
+  $("viewAll").addEventListener("click", function () { setResView("all"); });
   $("btnMenu").addEventListener("click", function () { buildMenu(); show($("menuOverlay")); });
   $("btnCloseMenu").addEventListener("click", closeMenu);
   $("btnCloseMenu2").addEventListener("click", closeMenu);
