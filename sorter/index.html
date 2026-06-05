@@ -116,6 +116,8 @@
         <div class="starthint">или нажми <kbd>Enter</kbd></div>
         <div class="starthint">на телефоне — свайп карточки: <b class="bad-t">←</b> плохо · <b class="good-t">→</b> хорошо · <b>↑</b> пропуск</div>
 
+        <button class="btn addict" id="btnAddDictStart">+ добавить свой словарь</button>
+
         <div class="neim">
           <input type="text" id="neimInput" placeholder="проверить нейм по фоносемантике…" autocomplete="off" autocapitalize="off" spellcheck="false">
           <div class="neimres" id="neimResult"></div>
@@ -144,16 +146,14 @@
         <div id="dictList" class="dictlist"></div>
         <div class="cust-row">
           <label class="btn filebtn">Добавить .txt<input type="file" id="customFile" accept=".txt,text/plain" multiple hidden></label>
-          <button class="btn" id="btnAddPaste">Вставить</button>
-          <button class="btn" id="btnOnlyCustom">Только свои</button>
           <button class="btn" id="btnLlmPrompt">Промпт для LLM</button>
         </div>
-        <div id="pasteBox" class="hidden">
+        <div id="pasteBox">
           <input type="text" id="pasteName" class="neim-in" placeholder="название словаря" autocomplete="off">
-          <textarea id="customText" placeholder="слова по одному на строку; с дефиницией: слово — значение"></textarea>
+          <textarea id="customText" placeholder="слова по одному на строку"></textarea>
           <button class="btn" id="btnSavePaste">Добавить словарь</button>
         </div>
-        <p class="hint">Каждый словарь — отдельный «язык» ✎ в «Языки в пуле»: миксуй или включай по одному. «Только свои» оставит лишь их. С дефиницией: «слово — значение» (или TAB / «|»).</p>
+        <p class="hint">Каждый словарь — отдельный «язык» ✎ в «Языки в пуле»: миксуй или включай по одному.</p>
       </div>
 
       <div class="field">

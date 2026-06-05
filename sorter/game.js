@@ -372,7 +372,6 @@
     "Составь словарь слов для нейминговой игры Sorter.\n" +
     "Формат строго:\n" +
     "— одно слово на строке;\n" +
-    "— по желанию краткая дефиниция через « — »: слово — значение;\n" +
     "— только кандидаты для бренда (сущ./прил./глаголы), без аббревиатур, имён собственных и вульгарного;\n" +
     "— длина 2–14 букв, благозвучные; латиница или кириллица.\n" +
     "Тема/территория: <ОПИШИ, напр. «тёплый кофейный бренд: ритуал, путешествие, тепло»>.\n" +
@@ -857,16 +856,10 @@
       });
       e.target.value = "";
     };
-    $("btnAddPaste").onclick = function () { $("pasteBox").classList.toggle("hidden"); };
     $("btnSavePaste").onclick = function () {
       var txt = $("customText").value.trim(); if (!txt) return;
       addCustomDict($("pasteName").value.trim() || "Словарь", txt);
-      $("customText").value = ""; $("pasteName").value = ""; $("pasteBox").classList.add("hidden"); buildMenu();
-    };
-    $("btnOnlyCustom").onclick = function () {
-      if (!customDicts().length) { alert("Сначала добавь словарь."); return; }
-      LANGS.forEach(function (L) { settings.langs[L.code] = (L.code.indexOf("custom:") === 0); });
-      save(K_SET, settings); buildMenu();
+      $("customText").value = ""; $("pasteName").value = ""; buildMenu();
     };
     $("btnLlmPrompt").onclick = copyLlmPrompt;
 
@@ -911,6 +904,11 @@
   $("viewRound").addEventListener("click", function () { setResView("round"); });
   $("viewAll").addEventListener("click", function () { setResView("all"); });
   $("btnMenu").addEventListener("click", function () { buildMenu(); show($("menuOverlay")); });
+  $("btnAddDictStart").addEventListener("click", function () {
+    buildMenu(); show($("menuOverlay"));
+    var box = $("pasteBox");
+    if (box) { box.scrollIntoView({ block: "center" }); var p = $("pasteName"); if (p) p.focus(); }
+  });
   $("btnCloseMenu").addEventListener("click", closeMenu);
   $("btnCloseMenu2").addEventListener("click", closeMenu);
   function closeMenu() {
@@ -922,8 +920,9 @@
     refreshStart();
   }
   $("btnResetHistory").addEventListener("click", function () {
-    if (!confirm("Сбросить историю сыгранных слов? Они снова смогут выпадать.")) return;
+    if (!confirm("Сбросить историю? Сыгранные слова вернутся в пул, счётчик раундов — на 1. (Список «за всё время» и вкус не тронутся.)")) return;
     played = new Set(); save(K_PLAYED, []);
+    save(K_RND, 0);   // следующий раунд снова первый
     buildMenu(); refreshStart();
   });
 

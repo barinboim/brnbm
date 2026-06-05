@@ -347,6 +347,9 @@ input[type=range]{ width:100%; accent-color:var(--accent); height:24px; }
 .btn.big{ font-size:16px; padding:15px 28px; width:100%; margin-top:6px; }
 .btn.forge{ color:var(--accent); border-color:rgba(113,252,233,.4); }
 .btn.forge:hover{ color:var(--accent); border-color:var(--accent); background:var(--accent-d); }
+.btn.addict{ display:block; width:100%; margin-top:18px; background:transparent; border-style:dashed;
+  border-color:var(--panel-bd); color:var(--muted); font-size:12.5px; }
+.btn.addict:hover{ border-style:dashed; border-color:var(--accent); color:var(--accent); }
 
 /* переключатель режима «Поиск / Ковка» на старте */
 .modeswitch{ display:flex; gap:8px; justify-content:center; margin:2px 0 14px; }
