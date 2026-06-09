@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OM Catering — админка (исключение неймов)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .adm-shell { max-width: 1080px; margin: 0 auto; padding: 28px 28px 90px; }
+    .adm-sub { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .adm-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 22px 0 14px; }
+    .adm-search {
+      flex: 1; min-width: 200px; background: var(--panel-2); border: 1px solid var(--line);
+      color: var(--text); border-radius: 10px; padding: 9px 13px; font-size: 14px; font-family: inherit;
+    }
+    .adm-search:focus { outline: none; border-color: var(--accent); }
+    .adm-count { font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .adm-count b { color: #ff8a9b; }
+    .adm-langs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .adm-list { display: flex; flex-direction: column; gap: 6px; }
+    .adm-row {
+      display: grid; grid-template-columns: 34px minmax(0, 1.3fr) 46px minmax(0, 0.9fr) minmax(0, 1.3fr);
+      gap: 14px; align-items: center;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px;
+    }
+    .adm-row.marked { border-color: #5a2832; background: #160e10; }
+    .adm-mark {
+      width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line);
+      background: var(--panel-2); color: var(--dim); font-size: 15px; line-height: 1; cursor: pointer; transition: all .14s;
+    }
+    .adm-mark:hover { color: #ff8a9b; border-color: #5a2832; }
+    .adm-row.marked .adm-mark { color: #fff; background: #b3263c; border-color: #b3263c; }
+    .adm-names { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    .adm-cyr { font-family: "Manrope", sans-serif; font-weight: 700; font-size: 15px; color: #fff; }
+    .adm-lat { font-size: 12.5px; color: var(--muted); }
+    .adm-row.marked .adm-cyr { text-decoration: line-through; color: #ff8a9b; }
+    .adm-gloss { font-size: 12px; color: var(--muted); }
+    .adm-note {
+      width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
+      border-radius: 8px; padding: 7px 10px; font-size: 12.5px; font-family: inherit;
+    }
+    .adm-note:focus { outline: none; border-color: var(--accent); }
+    .adm-note::placeholder { color: var(--dim); }
+    .adm-empty { font-size: 13px; color: var(--dim); padding: 16px 0; }
+  </style>
+</head>
+<body>
+  <div id="admin"></div>
+  <script src="data/registry.js"></script>
+  <script src="data/om-catering.js"></script>
+  <script src="src/admin.js"></script>
+</body>
+</html>
