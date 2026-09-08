@@ -246,10 +246,91 @@ function renderPlacements() {
     pageElement.append(node);
 
     node.addEventListener("pointerdown", (event) => startDrag(event, placement, pageElement));
+    node.addEventListener("touchstart", (event) => startGesture(event, placement, pageElement), {
+      passive: false,
+    });
     rotateHandle.addEventListener("pointerdown", (event) => startRotate(event, placement, pageElement));
     handle.addEventListener("pointerdown", (event) => startResize(event, placement, pageElement));
   }
   updateSidebarForSelection();
+}
+
+// Two-finger pinch / twist / drag for touch devices (where the sidebar is hidden).
+let gestureActive = false;
+
+function startGesture(event, placement, pageElement) {
+  if (event.touches.length < 2) return;
+  event.preventDefault();
+  event.stopPropagation();
+
+  gestureActive = true;
+  state.selectedId = placement.id;
+  updateSidebarForSelection();
+
+  const node = event.currentTarget;
+  node.classList.add("selected");
+  const page = pageForPlacement(placement.pageIndex);
+  const scale = pageScale(pageElement);
+
+  const [a, b] = event.touches;
+  const startDist = Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY) || 1;
+  const startAngle = Math.atan2(b.clientY - a.clientY, b.clientX - a.clientX);
+  const startMidX = (a.clientX + b.clientX) / 2;
+  const startMidY = (a.clientY + b.clientY) / 2;
+  const start = {
+    x: placement.x,
+    y: placement.y,
+    width: placement.width,
+    height: placement.height,
+    rotation: placement.rotation || 0,
+  };
+  const ratio = start.height / start.width;
+
+  const onMove = (moveEvent) => {
+    if (moveEvent.touches.length < 2) return;
+    moveEvent.preventDefault();
+    const [p, q] = moveEvent.touches;
+
+    const dist = Math.hypot(q.clientX - p.clientX, q.clientY - p.clientY) || 1;
+    const angle = Math.atan2(q.clientY - p.clientY, q.clientX - p.clientX);
+    const midX = (p.clientX + q.clientX) / 2;
+    const midY = (p.clientY + q.clientY) / 2;
+
+    const factor = clamp(dist / startDist, 0.15, 12);
+    const width = clamp(start.width * factor, 20, page.width * 2);
+    placement.width = width;
+    placement.height = width * ratio;
+
+    const deg = start.rotation + ((angle - startAngle) * 180) / Math.PI;
+    placement.rotation = ((((deg + 180) % 360) + 360) % 360) - 180;
+
+    // keep the pinch centre under the fingers: pan by the midpoint delta and
+    // compensate for the size change so scaling feels centred.
+    placement.x = start.x + (midX - startMidX) / scale - (placement.width - start.width) / 2;
+    placement.y = start.y + (midY - startMidY) / scale - (placement.height - start.height) / 2;
+
+    // mutate the live node directly — re-rendering mid-gesture would detach the
+    // element that the touch sequence is bound to.
+    node.style.width = `${placement.width * scale}px`;
+    node.style.height = `${placement.height * scale}px`;
+    node.style.left = `${placement.x * scale}px`;
+    node.style.top = `${placement.y * scale}px`;
+    node.style.transform = `rotate(${placement.rotation}deg)`;
+    els.rotationValue.textContent = `${Math.round(placement.rotation)}°`;
+  };
+
+  const onEnd = (endEvent) => {
+    if (endEvent.touches && endEvent.touches.length > 0) return;
+    gestureActive = false;
+    window.removeEventListener("touchmove", onMove);
+    window.removeEventListener("touchend", onEnd);
+    window.removeEventListener("touchcancel", onEnd);
+    renderPlacements();
+  };
+
+  window.addEventListener("touchmove", onMove, { passive: false });
+  window.addEventListener("touchend", onEnd);
+  window.addEventListener("touchcancel", onEnd);
 }
 
 function selectedPlacement() {
@@ -299,6 +380,7 @@ function startDrag(event, placement, pageElement) {
   event.currentTarget.setPointerCapture(event.pointerId);
 
   const onMove = (moveEvent) => {
+    if (gestureActive) return; // a two-finger gesture took over
     const dx = (moveEvent.clientX - start.pointerX) / scale;
     const dy = (moveEvent.clientY - start.pointerY) / scale;
     placement.x = clamp(start.x + dx, 0, page.width - placement.width);
