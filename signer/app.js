@@ -27,6 +27,8 @@ const els = {
   viewer: document.querySelector("#viewer"),
   zoomRange: document.querySelector("#zoomRange"),
   sizeRange: document.querySelector("#sizeRange"),
+  rotationRange: document.querySelector("#rotationRange"),
+  rotationValue: document.querySelector("#rotationValue"),
   signaturePreview: document.querySelector("#signaturePreview"),
   status: document.querySelector("#status"),
   passwordOverlay: document.querySelector("#passwordOverlay"),
@@ -226,22 +228,41 @@ function renderPlacements() {
     node.style.top = `${placement.y * scale}px`;
     node.style.width = `${placement.width * scale}px`;
     node.style.height = `${placement.height * scale}px`;
+    node.style.transform = `rotate(${placement.rotation || 0}deg)`;
 
     const image = document.createElement("img");
     image.src = signature.url;
     image.alt = signature.label;
 
+    const rotateHandle = document.createElement("span");
+    rotateHandle.className = "rotate-handle";
+    rotateHandle.title = "Rotate";
+
     const handle = document.createElement("span");
     handle.className = "handle";
     handle.title = "Resize";
 
-    node.append(image, handle);
+    node.append(image, rotateHandle, handle);
     pageElement.append(node);
 
     node.addEventListener("pointerdown", (event) => startDrag(event, placement, pageElement));
+    rotateHandle.addEventListener("pointerdown", (event) => startRotate(event, placement, pageElement));
     handle.addEventListener("pointerdown", (event) => startResize(event, placement, pageElement));
   }
-  els.deleteSelected.disabled = !state.selectedId;
+  updateSidebarForSelection();
+}
+
+function selectedPlacement() {
+  return state.placements.find((placement) => placement.id === state.selectedId) || null;
+}
+
+function updateSidebarForSelection() {
+  const placement = selectedPlacement();
+  els.deleteSelected.disabled = !placement;
+  els.rotationRange.disabled = !placement;
+  const deg = placement ? Math.round(placement.rotation || 0) : 0;
+  els.rotationRange.value = String(deg);
+  els.rotationValue.textContent = `${deg}°`;
 }
 
 function selectPlacement(id) {
@@ -259,11 +280,12 @@ function pageForPlacement(pageIndex) {
 
 function startDrag(event, placement, pageElement) {
   if (event.target.classList.contains("handle")) return;
+  if (event.target.classList.contains("rotate-handle")) return;
   event.preventDefault();
   event.stopPropagation();
   state.selectedId = placement.id;
   event.currentTarget.classList.add("selected");
-  els.deleteSelected.disabled = false;
+  updateSidebarForSelection();
 
   const scale = pageScale(pageElement);
   const page = pageForPlacement(placement.pageIndex);
@@ -298,24 +320,64 @@ function startResize(event, placement, pageElement) {
   event.stopPropagation();
   state.selectedId = placement.id;
   event.currentTarget.parentElement.classList.add("selected");
-  els.deleteSelected.disabled = false;
+  updateSidebarForSelection();
 
   const scale = pageScale(pageElement);
   const page = pageForPlacement(placement.pageIndex);
   const signature = state.signatures.find((item) => item.name === placement.signature);
   const ratio = signature.height / signature.width;
+  const angle = ((placement.rotation || 0) * Math.PI) / 180;
   const start = {
     pointerX: event.clientX,
+    pointerY: event.clientY,
     width: placement.width,
   };
 
   event.currentTarget.parentElement.setPointerCapture(event.pointerId);
 
   const onMove = (moveEvent) => {
-    const dx = (moveEvent.clientX - start.pointerX) / scale;
+    const dxScreen = (moveEvent.clientX - start.pointerX) / scale;
+    const dyScreen = (moveEvent.clientY - start.pointerY) / scale;
+    // project the pointer delta onto the element's own (rotated) x axis
+    const dx = dxScreen * Math.cos(angle) + dyScreen * Math.sin(angle);
     const width = clamp(start.width + dx, 20, page.width - placement.x);
     placement.width = width;
     placement.height = clamp(width * ratio, 12, page.height - placement.y);
+    renderPlacements();
+  };
+
+  const onUp = () => {
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+  };
+
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp, { once: true });
+}
+
+function startRotate(event, placement, pageElement) {
+  event.preventDefault();
+  event.stopPropagation();
+  state.selectedId = placement.id;
+
+  const node = event.currentTarget.parentElement;
+  node.classList.add("selected");
+  updateSidebarForSelection();
+
+  const rect = node.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+  const startPointer = Math.atan2(event.clientY - cy, event.clientX - cx);
+  const startRotation = placement.rotation || 0;
+
+  node.setPointerCapture(event.pointerId);
+
+  const onMove = (moveEvent) => {
+    const current = Math.atan2(moveEvent.clientY - cy, moveEvent.clientX - cx);
+    let deg = startRotation + ((current - startPointer) * 180) / Math.PI;
+    if (moveEvent.shiftKey) deg = Math.round(deg / 15) * 15;
+    deg = ((((deg + 180) % 360) + 360) % 360) - 180;
+    placement.rotation = deg;
     renderPlacements();
   };
 
@@ -349,6 +411,7 @@ function addSignatureToFirstVisiblePage() {
     y: (page.height - height) / 2,
     width,
     height,
+    rotation: 0,
   };
 
   state.placements.push(placement);
@@ -385,7 +448,7 @@ async function downloadSignedPdf() {
   if (!state.pdfBytes) return;
   setStatus("Building signed PDF...");
 
-  const { PDFDocument } = window.PDFLib;
+  const { PDFDocument, degrees } = window.PDFLib;
   const pdfDoc = await PDFDocument.load(state.pdfBytes);
 
   const embedCache = new Map();
@@ -402,11 +465,34 @@ async function downloadSignedPdf() {
     if (!page) continue;
     const image = embedCache.get(placement.signature);
     const { height: pageHeight } = page.getSize();
+    const w = placement.width;
+    const h = placement.height;
+    const rot = placement.rotation || 0;
+
+    if (!rot) {
+      page.drawImage(image, {
+        x: placement.x,
+        y: pageHeight - placement.y - h,
+        width: w,
+        height: h,
+      });
+      continue;
+    }
+
+    // pdf-lib rotates the image around its (x, y) anchor, counter-clockwise.
+    // On screen we rotate clockwise around the centre, so use phi = -rot and
+    // solve for the anchor that keeps the centre in place.
+    const phi = (-rot * Math.PI) / 180;
+    const cos = Math.cos(phi);
+    const sin = Math.sin(phi);
+    const centreX = placement.x + w / 2;
+    const centreY = pageHeight - (placement.y + h / 2);
     page.drawImage(image, {
-      x: placement.x,
-      y: pageHeight - placement.y - placement.height,
-      width: placement.width,
-      height: placement.height,
+      x: centreX - (w / 2) * cos + (h / 2) * sin,
+      y: centreY - (w / 2) * sin - (h / 2) * cos,
+      width: w,
+      height: h,
+      rotate: degrees(-rot),
     });
   }
 
@@ -452,6 +538,14 @@ els.deleteSelected.addEventListener("click", () => {
 els.zoomRange.addEventListener("input", () => {
   state.zoom = Number(els.zoomRange.value);
   renderPages();
+});
+
+els.rotationRange.addEventListener("input", () => {
+  const placement = selectedPlacement();
+  if (!placement) return;
+  placement.rotation = Number(els.rotationRange.value);
+  els.rotationValue.textContent = `${Math.round(placement.rotation)}°`;
+  renderPlacements();
 });
 
 window.addEventListener("keydown", (event) => {
