@@ -167,9 +167,17 @@ async function unlockSignatures(password, onProgress = () => {}) {
   renderSignatureOptions();
 }
 
+function viewerContentWidth() {
+  const styles = getComputedStyle(els.viewer);
+  const padding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+  return els.viewer.clientWidth - padding;
+}
+
 async function renderPages() {
   els.viewer.innerHTML = "";
+  const available = viewerContentWidth();
   for (const page of state.pages) {
+    const fitZoom = available > 0 ? Math.min(state.zoom, available / page.width) : state.zoom;
     const shell = document.createElement("div");
     shell.className = "page-shell";
 
@@ -180,9 +188,9 @@ async function renderPages() {
     const pageElement = document.createElement("div");
     pageElement.className = "page";
     pageElement.dataset.pageIndex = String(page.index);
-    pageElement.dataset.zoom = String(state.zoom);
-    pageElement.style.width = `${page.width * state.zoom}px`;
-    pageElement.style.height = `${page.height * state.zoom}px`;
+    pageElement.dataset.zoom = String(fitZoom);
+    pageElement.style.width = `${page.width * fitZoom}px`;
+    pageElement.style.height = `${page.height * fitZoom}px`;
 
     const canvas = document.createElement("canvas");
     canvas.className = "pdf-page";
@@ -620,6 +628,13 @@ els.deleteSelected.addEventListener("click", () => {
 els.zoomRange.addEventListener("input", () => {
   state.zoom = Number(els.zoomRange.value);
   renderPages();
+});
+
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  if (!state.pages.length) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => renderPages(), 150);
 });
 
 els.rotationRange.addEventListener("input", () => {
