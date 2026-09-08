@@ -99,6 +99,9 @@ button,
   justify-content: center;
   cursor: pointer;
   text-transform: lowercase;
+  line-height: 1;
+  /* optically centre the cap band inside the pill (font has a deep ascent) */
+  text-box: trim-both cap alphabetic;
 }
 
 button:hover:not(:disabled),
@@ -112,6 +115,24 @@ button:disabled {
   color: #cfcfcf;
   background: #fff;
   cursor: not-allowed;
+}
+
+#addSignature {
+  background: #138344;
+  border-color: #138344;
+  color: #f5f3ef;
+}
+
+#addSignature:hover:not(:disabled) {
+  background: #0f6d38;
+  border-color: #0f6d38;
+  color: #f5f3ef;
+}
+
+#addSignature:disabled {
+  background: #fff;
+  border-color: var(--hair);
+  color: #cfcfcf;
 }
 
 #downloadPdf {
@@ -455,28 +476,50 @@ input[type="range"]:disabled {
 
 /* ---------- responsive ---------- */
 
+/* one-line coach mark shown under the top bar on touch layouts */
+.gesture-hint {
+  display: none;
+  margin: 0;
+  padding: 8px 16px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  background: #fff;
+}
+
 @media (max-width: 820px) {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+    padding: 12px 16px;
   }
 
   .actions {
     justify-content: flex-start;
   }
 
-  .workspace {
-    grid-template-columns: 1fr;
+  .actions button,
+  .actions .file-button,
+  .actions select {
+    height: 38px;
+    padding: 0 14px;
   }
 
+  /* the sidebar controls are replaced by touch gestures on small screens */
   .sidebar {
-    position: static;
-    height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--hair);
+    display: none;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+    min-height: 0;
   }
 
   .viewer {
-    padding: 18px 10px;
+    padding: 16px 8px;
+  }
+
+  .gesture-hint {
+    display: block;
   }
 }
