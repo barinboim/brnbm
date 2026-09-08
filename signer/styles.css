@@ -1,13 +1,21 @@
+@font-face {
+  font-family: "Zangezi Sans";
+  src: url("https://app.angelcakes.ru/fonts/zangezi.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --bg: #f5f6f8;
+  --bg: #ffffff;
   --panel: #ffffff;
-  --ink: #1d252d;
-  --muted: #657282;
-  --line: #d9dee7;
-  --accent: #1f6feb;
-  --accent-strong: #1557be;
+  --ink: #141414;
+  --muted: #a0a0a0;
+  --hair: #e6e6e6;
+  --field: #fafafa;
   --danger: #b42318;
-  --shadow: 0 12px 34px rgba(26, 33, 43, 0.12);
+  --font: "Zangezi Sans", "Futura", "Avenir Next", "Century Gothic",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 * {
@@ -19,7 +27,8 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background: var(--bg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
 }
 
 button,
@@ -28,41 +37,59 @@ input {
   font: inherit;
 }
 
+/* ---------- top bar ---------- */
+
 .topbar {
   position: sticky;
   top: 0;
   z-index: 20;
   display: flex;
-  gap: 16px;
+  gap: 20px;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
+  padding: 16px 26px;
   background: var(--panel);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hair);
 }
 
 .brand {
   flex: 0 0 auto;
-  font-size: 18px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 19px;
+  letter-spacing: 0.01em;
+}
+
+.brand svg {
+  width: 19px;
+  height: 33px;
+  display: block;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   justify-content: flex-end;
 }
 
+/* ---------- controls ---------- */
+
 button,
 .file-button,
 select {
-  height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
   background: #fff;
   color: var(--ink);
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 button,
@@ -70,121 +97,173 @@ button,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
   cursor: pointer;
-  font-weight: 650;
+  text-transform: lowercase;
 }
 
 button:hover:not(:disabled),
 .file-button:hover {
-  border-color: var(--accent);
+  background: var(--ink);
+  color: #fff;
 }
 
 button:disabled {
+  border-color: var(--hair);
+  color: #cfcfcf;
+  background: #fff;
   cursor: not-allowed;
-  color: #9aa4b2;
-  background: #f1f3f6;
 }
 
 #downloadPdf {
-  border-color: var(--accent);
-  background: var(--accent);
+  background: var(--ink);
   color: #fff;
 }
 
 #downloadPdf:hover:not(:disabled) {
-  background: var(--accent-strong);
+  background: #000;
 }
 
 #downloadPdf:disabled {
-  border-color: var(--line);
-  background: #f1f3f6;
-  color: #9aa4b2;
-}
-
-#addSignature {
-  border-color: #1f8a4c;
-  background: #1f8a4c;
-  color: #fff;
-  font-weight: 700;
-}
-
-#addSignature:hover:not(:disabled) {
-  background: #176a3a;
-  border-color: #176a3a;
-}
-
-#addSignature:disabled {
-  border-color: var(--line);
-  background: #f1f3f6;
-  color: #9aa4b2;
+  background: #fff;
+  border-color: var(--hair);
+  color: #cfcfcf;
 }
 
 select {
-  min-width: 170px;
-  padding: 0 10px;
+  min-width: 190px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .file-button input {
   display: none;
 }
 
+/* ---------- workspace ---------- */
+
 .workspace {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  min-height: calc(100vh - 61px);
+  grid-template-columns: 292px minmax(0, 1fr);
+  min-height: calc(100vh - 73px);
 }
 
 .sidebar {
   position: sticky;
-  top: 61px;
+  top: 73px;
   align-self: start;
-  height: calc(100vh - 61px);
-  padding: 18px;
+  height: calc(100vh - 73px);
+  padding: 28px 26px;
   overflow: auto;
-  background: #eef1f5;
-  border-right: 1px solid var(--line);
+  background: #fff;
+  border-right: 1px solid var(--hair);
 }
 
 .field {
   display: grid;
-  gap: 8px;
-  margin-bottom: 18px;
+  gap: 12px;
+  margin-bottom: 26px;
 }
 
 .field label {
-  font-size: 13px;
-  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: lowercase;
+  color: var(--muted);
+}
+
+.field label span {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- range sliders ---------- */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--ink);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 1px;
+  background: var(--ink);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid var(--ink);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1.5px solid var(--ink);
+}
+
+input[type="range"]:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.hint {
+  margin: -14px 0 26px;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--muted);
 }
 
 .signature-preview {
   display: grid;
-  min-height: 110px;
-  margin-bottom: 18px;
+  min-height: 132px;
+  margin-bottom: 24px;
+  padding: 16px;
   place-items: center;
   background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid var(--ink);
+  border-radius: 16px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .signature-preview img {
-  max-width: 210px;
-  max-height: 90px;
+  max-width: 100%;
+  max-height: 96px;
 }
 
 .status {
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--muted);
 }
 
+/* ---------- viewer ---------- */
+
 .viewer {
   display: grid;
-  gap: 28px;
+  gap: 30px;
   justify-items: center;
-  padding: 28px;
+  padding: 34px;
   overflow: auto;
+  background: #fafafa;
 }
 
 .empty-state {
@@ -192,23 +271,25 @@ select {
   gap: 8px;
   width: min(460px, 100%);
   margin-top: 14vh;
-  padding: 28px;
+  padding: 30px;
   text-align: center;
   color: var(--muted);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--hair);
+  border-radius: 18px;
 }
 
 .page-shell {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   justify-items: start;
 }
 
 .page-label {
-  font-size: 13px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: lowercase;
   color: var(--muted);
 }
 
@@ -216,7 +297,8 @@ select {
   position: relative;
   overflow: hidden;
   background: #fff;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--hair);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 14px 34px rgba(0, 0, 0, 0.06);
 }
 
 .page canvas.pdf-page {
@@ -227,17 +309,19 @@ select {
   pointer-events: none;
 }
 
+/* ---------- placed signatures ---------- */
+
 .signature {
   position: absolute;
   display: block;
-  border: 1px dashed rgba(31, 111, 235, 0.6);
+  border: 1px dashed rgba(20, 20, 20, 0.35);
   cursor: move;
   touch-action: none;
+  transform-origin: center center;
 }
 
 .signature.selected {
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.16);
+  border: 1.5px dashed var(--ink);
 }
 
 .signature img {
@@ -248,17 +332,53 @@ select {
   user-select: none;
 }
 
+.signature .handle,
+.signature .rotate-handle {
+  display: none;
+}
+
+.signature.selected .handle,
+.signature.selected .rotate-handle {
+  display: block;
+}
+
 .signature .handle {
   position: absolute;
-  right: -6px;
-  bottom: -6px;
-  width: 13px;
-  height: 13px;
-  background: var(--accent);
-  border: 2px solid #fff;
+  right: -7px;
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 1.5px solid var(--ink);
   border-radius: 50%;
   cursor: nwse-resize;
 }
+
+.signature .rotate-handle {
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  cursor: grab;
+}
+
+.signature .rotate-handle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 11px;
+  width: 1px;
+  height: 13px;
+  background: var(--ink);
+  transform: translateX(-50%);
+}
+
+/* ---------- password overlay ---------- */
 
 .overlay {
   position: fixed;
@@ -266,8 +386,8 @@ select {
   z-index: 50;
   display: grid;
   place-items: center;
-  background: rgba(15, 22, 33, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(6px);
 }
 
 .overlay[hidden] {
@@ -276,17 +396,24 @@ select {
 
 .password-card {
   display: grid;
-  gap: 12px;
-  width: min(340px, 90vw);
-  padding: 24px;
-  background: var(--panel);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  gap: 14px;
+  width: min(360px, 90vw);
+  padding: 30px;
+  background: #fff;
+  border: 1px solid var(--ink);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
+}
+
+.password-card svg {
+  width: 20px;
+  height: 34px;
 }
 
 .password-card h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
+  font-weight: 600;
 }
 
 .password-card p {
@@ -296,36 +423,37 @@ select {
 }
 
 .password-card input {
-  height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
   outline: none;
+  font-size: 14px;
 }
 
 .password-card input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(31, 111, 235, 0.16);
+  box-shadow: 0 0 0 3px rgba(20, 20, 20, 0.12);
 }
 
 .password-card button {
-  height: 38px;
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  background: var(--accent);
+  height: 42px;
+  border-radius: 999px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
   color: #fff;
-  cursor: pointer;
-  font-weight: 700;
 }
 
-.password-card button:hover {
-  background: var(--accent-strong);
+.password-card button:hover:not(:disabled) {
+  background: #000;
+  color: #fff;
 }
 
 .password-error {
   font-size: 13px;
   color: var(--danger);
 }
+
+/* ---------- responsive ---------- */
 
 @media (max-width: 820px) {
   .topbar {
@@ -345,7 +473,7 @@ select {
     position: static;
     height: auto;
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hair);
   }
 
   .viewer {
